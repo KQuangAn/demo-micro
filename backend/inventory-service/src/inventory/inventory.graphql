@@ -1,0 +1,24 @@
+type Inventory {
+  # Example field (placeholder)
+  exampleField: Int
+}
+
+input CreateInventoryInput {
+  # Example field (placeholder)
+  exampleField: Int
+}
+
+input UpdateInventoryInput {
+  id: Int!
+}
+
+type Query {
+  inventory: [Inventory]!
+  inventory(id: Int!): Inventory
+}
+
+type Mutation {
+  createInventory(createInventoryInput: CreateInventoryInput!): Inventory!
+  updateInventory(updateInventoryInput: UpdateInventoryInput!): Inventory!
+  removeInventory(id: Int!): Inventory
+}

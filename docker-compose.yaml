@@ -1,61 +1,130 @@
 version: '3.8'
 
 services:
-  notification-service:
-    build: .
-    container_name: notification-service
+  # Frontend
+  frontend-microfrontend1:
+    build:
+      context: ./frontend/microfrontend1
+      dockerfile: Dockerfile
     ports:
-      - "5000:5000"
+      - "3001:3000"
     environment:
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=us-east-1
-      - GRAPHQL_URL=http://graphql-service:4000/graphql
-      - SQS_QUEUE_URL=http://sqs-service:9324/queue/notification-queue
-    secrets:
-      - aws_credentials
-      - notification_db_credentials
-    depends_on:
-      - postgres
-
-  postgres:
-    image: postgres:13
-    container_name: postgres-db
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      - NEXT_PUBLIC_API_URL=http://localhost:3001/api
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+      - ./frontend/microfrontend1:/app
+    working_dir: /app
+    command: turbo dev --port 3000
 
-  graphql-service:
-    image: graphql-service-image
-    container_name: graphql-service
+  frontend-microfrontend2:
+    build:
+      context: ./frontend/microfrontend2
+      dockerfile: Dockerfile
     ports:
-      - "4000:4000"
+      - "3002:3000"
     environment:
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB}
-    depends_on:
-      - postgres
+      - NEXT_PUBLIC_API_URL=http://localhost:3002/api
+    volumes:
+      - ./frontend/microfrontend2:/app
+    working_dir: /app
+    command: turbo dev --port 3000
 
-  sqs-service:
+  # Backend
+  orders-service:
+    build:
+      context: ./services/orders
+    ports:
+      - "4001:4000"
+    environment:
+      - DATABASE_URL=postgres://orders_user:orders_password@orders-db:5432/orders_db
+    depends_on:
+      - orders-db
+      - eventbridge
+      - sqs
+    networks:
+      - app-network
+
+  inventory-service:
+    build:
+      context: ./services/inventory
+    ports:
+      - "4002:4000"
+    environment:
+      - DATABASE_URL=postgres://inventory_user:inventory_password@inventory-db:5432/inventory_db
+    depends_on:
+      - inventory-db
+      - eventbridge
+      - sqs
+    networks:
+      - app-network
+
+  notification-service:
+    build:
+      context: ./services/notification
+    ports:
+      - "4003:4000"
+    environment:
+      - DATABASE_URL=postgres://notification_user:notification_password@notification-db:5432/notification_db
+    depends_on:
+      - notification-db
+      - eventbridge
+      - sqs
+    networks:
+      - app-network
+
+  # Databases for Each Service
+  orders-db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: orders_user
+      POSTGRES_PASSWORD: orders_password
+      POSTGRES_DB: orders_db
+    volumes:
+      - orders-db-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  inventory-db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: inventory_user
+      POSTGRES_PASSWORD: inventory_password
+      POSTGRES_DB: inventory_db
+    volumes:
+      - inventory-db-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  notification-db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: notification_user
+      POSTGRES_PASSWORD: notification_password
+      POSTGRES_DB: notification_db
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  # AWS EventBridge and SQS (simulated using Localstack)
+  localstack:
     image: localstack/localstack
-    container_name: localstack
     ports:
       - "4566:4566"
-      - "4510:4510"
+      - "4510-4559:4510-4559"
     environment:
-      - SERVICES=sqs
+      - DEFAULT_REGION=us-east-1
+      - SERVICES=sqs,events
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - app-network
 
-volumes:
-  postgres-data:
+  # Volumes
+  volumes:
+    orders-db-data:
+    inventory-db-data:
+    notification-db-data:
 
-secrets:
-  aws_credentials:
-    external: true
-  notification_db_credentials:
-    external: true
+networks:
+  app-network:
+    driver: bridge

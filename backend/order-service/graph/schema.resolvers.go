@@ -6,59 +6,76 @@ package graph
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"orderservice/graph/model"
 	"orderservice/internal/eventbridge"
+	"orderservice/internal/models"
+	"orderservice/internal/sqs"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	ebTypes "github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
 )
 
 // CreateOrder is the resolver for the createOrder field.
 func (r *mutationResolver) CreateOrder(ctx context.Context, productID string, quantity int32) (*model.Order, error) {
-// 1. Generate a unique Order ID (could be UUID)
-orderID := fmt.Sprintf("%d", time.Now().UnixNano())
+	orderID := fmt.Sprintf("%d", time.Now().UnixNano())
 
-// 2. Create a new Order object in the database (you can replace this with your ORM or raw SQL)
-order := model.Order{
-	ID:        orderID,
-	ProductID: input.ProductID,
-	Quantity:  input.Quantity,
-	Status:    "Pending",  // Status can be 'Pending', 'Completed', 'Failed', etc.
-	CreatedAt: time.Now().Format(time.RFC3339),
-}
+	order := model.Order{
+		ID:        orderID,
+		ProductID: productID,
+		Quantity:  quantity,
+		Status:    "Pending",
+	}
 
-// Save order in the database (assuming you're using a DB client)
-_, err := r.DB.Exec(ctx, `INSERT INTO orders (id, product_id, quantity, status, created_at) VALUES ($1, $2, $3, $4, $5)`,
-	order.ID, order.ProductID, order.Quantity, order.Status, order.CreatedAt)
-if err != nil {
-	return nil, fmt.Errorf("failed to create order: %v", err)
-}
+	_, err := r.DB.Exec(ctx, `INSERT INTO orders (id, product_id, quantity, status, created_at) VALUES ($1, $2, $3, $4, $5)`,
+		order.ID, order.ProductID, order.Quantity, order.Status)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create order: %v", err)
+	}
 
-// 3. Push the order creation event to SQS
-event := model.OrderEvent{
-	OrderID:  order.ID,
-	ProductID: order.ProductID,
-	Quantity:  order.Quantity,
-	Status:    order.Status,
-}
-err = sqs.SendEventToQueue("orderCreatedQueue", event) // `SendEventToQueue` is a helper function for SQS
-if err != nil {
-	return nil, fmt.Errorf("failed to send order event to SQS: %v", err)
-}
+	// 3. Push the order creation event to SQS
+	event := models.Order{
+		ID:        order.ID,
+		ProductID: order.ProductID,
+		Quantity:  order.Quantity,
+		Status:    order.Status,
+	}
+	err = sqs.SendEventToQueue("orderCreatedQueue", event) // `SendEventToQueue` is a helper function for SQS
+	if err != nil {
+		return nil, fmt.Errorf("failed to send order event to SQS: %v", err)
+	}
 
-// 4. Process the event asynchronously from SQS (handled by a separate worker)
+	// 4. Process the event asynchronously from SQS (handled by a separate worker)
 
-// 5. Once the order is processed, send notification via EventBridge
-notificationEvent := model.NotificationEvent{
-	OrderID: order.ID,
-	Status:  order.Status, // This can be updated status after processing
-}
-err = eventbridge.SendEventToNotificationService(notificationEvent)
-if err != nil {
-	return nil, fmt.Errorf("failed to send notification event to EventBridge: %v", err)
-}
+	// 5. Once the order is processed, send notification via EventBridge
+	notification := models.Notification{
+		ID:        "1",
+		Event:     "",
+		CreatedAt: order.Status,
+	}
 
-// Return the created order as the mutation result
-return &order, nil
+	eventDetail, err := json.Marshal(notification) // Assuming ev.Detail is already a struct or map
+	if err != nil {
+		log.Fatalf("failed to marshal event detail: %v", err)
+	}
+
+	notificationEvent := ebTypes.PutEventsRequestEntry{
+		Source:       aws.String("qwefqef"),
+		DetailType:   aws.String("323423"),
+		Detail:       aws.String(string(eventDetail)),
+		EventBusName: aws.String("qwefqef"),
+	}
+
+	err = eventbridge.SendEvent(notificationEvent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send notification event to EventBridge: %v", err)
+	}
+
+	// Return the created order as the mutation result
+	return &order, nil
 }
 
 // Orders is the resolver for the orders field.

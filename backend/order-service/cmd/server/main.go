@@ -2,57 +2,49 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"log"
-	"net/http"
+	"orderservice/internal/sqs"
 	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/eventbridge"
-	"github.com/labstack/echo/v4"
+	"github.com/joho/godotenv"
 )
-
-type Order struct {
-	ID       string `json:"id"`
-	Product  string `json:"product"`
-	Quantity int    `json:"quantity"`
+func handleMessage(message string) {
+    fmt.Printf("Processing message: %s\n", message)
 }
 
 func main() {
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("ap-southeast-1"))
-	if err != nil {
-		log.Fatalf("unable to load SDK config: %v", err)
-	}
-	eb := eventbridge.NewFromConfig(cfg)
-	busName := os.Getenv("EVENT_BUS_NAME")
+	err := godotenv.Load()
+    if err != nil {
+        log.Fatal("Error loading .env file")
+    }
 
-	e := echo.New()
-	e.POST("/order", func(c echo.Context) error {
-		order := Order{}
-		if err := c.Bind(&order); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid input"})
-		}
+	region := os.Getenv("AWS_REGION")
+    if region == "" {
+        log.Fatal("AWS_REGION environment variable is not set")
+    }
 
-		detail, _ := json.Marshal(order)
-		_, err := eb.PutEvents(context.TODO(), &eventbridge.PutEventsInput{
-			Entries: []eventbridgetypes.PutEventsRequestEntry{
-				{
-					Source:       aws.String("order.service"),
-					DetailType:   aws.String("OrderPlaced"),
-					EventBusName: aws.String(busName),
-					Detail:       aws.String(string(detail)),
-				},
-			},
-		})
+    cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
+    if err != nil {
+        log.Fatalf("unable to load SDK config, %v", err)
+    }
+    fmt.Println(cfg)
+	
+	// Start the SQS poller in a separate goroutine
+	go sqs.StartSQSConsumer(handleMessage)
+	
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	<-sigs
 
-		if err != nil {
-			log.Println("failed to send event:", err)
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "event failed"})
-		}
+	// Initialize the GraphQL server
+	// r := gin.Default()
+	// r.POST("/query", handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}})))
+	// r.GET("/", playground.Handler("GraphQL playground", "/query"))
 
-		return c.JSON(http.StatusOK, map[string]string{"status": "event sent"})
-	})
-
-	e.Logger.Fatal(e.Start(":8080"))
+	// // Start the HTTP server
+	// r.Run(":8080")
 }

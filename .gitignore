@@ -1,0 +1,69 @@
+.env
+
+# Node.js / Next.js
+node_modules/
+.next/
+out/
+package-lock.json
+yarn.lock
+*.log
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# NestJS
+dist/
+*.js
+*.d.ts
+*.map
+
+# Go
+*.exe
+*.out
+*.test
+*.so
+*.a
+vendor/
+bin/
+pkg/
+*.profile
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfplan
+*.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+env/
+venv/
+*.egg-info/
+*.egg
+.Python
+db.sqlite3
+*.log
+
+# IDE and Editor specific files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.swp
+*.swo
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Icon?
+Desktop.ini

@@ -1,0 +1,16 @@
+type Order {
+	id: ID!
+	productId: ID!
+	quantity: Int!
+	status: String!
+  }
+  
+  type Query {
+	orders: [Order!]!
+	order(id: ID!): Order
+  }
+  
+  type Mutation {
+	createOrder(productId: ID!, quantity: Int!): Order!
+  }
+  

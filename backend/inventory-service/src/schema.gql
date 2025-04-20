@@ -1,0 +1,35 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Inventory {
+  id: String!
+  name: String!
+  description: String!
+  quantity: Int!
+  price: Float!
+  updatedAt: String!
+}
+
+type Query {
+  getInventory(id: String!): Inventory!
+  allInventory: [Inventory!]!
+}
+
+type Mutation {
+  createInventory(createInventoryInput: CreateInventoryInput!): Inventory!
+  updateInventory(updateInventoryInput: UpdateInventoryInput!): Inventory!
+  removeInventory(id: String!): Inventory!
+}
+
+input CreateInventoryInput {
+  description: String!
+  name: String!
+  quantity: Float!
+  price: Float!
+}
+
+input UpdateInventoryInput {
+  id: String!
+  quantity: Float!
+}

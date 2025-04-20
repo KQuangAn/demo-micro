@@ -3,19 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
-
 	"log"
-	"orderservice/graph"
-
-	"orderservice/internal/db"
-	"orderservice/internal/sqs"
+	"net/http"
 	"os"
 	"path/filepath"
 
+	"orderservice/graph"
+	"orderservice/internal/db"
+	"orderservice/internal/sqs"
+
 	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
@@ -23,20 +21,12 @@ func handleMessage(message string) {
 	fmt.Printf("Processing message: %s\n", message)
 }
 
-func graphqlHandler(dbPool *db.DBPool) gin.HandlerFunc {
+func graphqlHandler(dbPool *db.DBPool) http.HandlerFunc {
 	// NewExecutableSchema and Config are in the generated.go file
 	// Resolver is in the resolver.go file
 	h := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{DB: dbPool.Pool}}))
-	return func(c *gin.Context) {
-		h.ServeHTTP(c.Writer, c.Request)
-	}
-}
-
-// Defining the Playground handler
-func playgroundHandler() gin.HandlerFunc {
-	h := playground.Handler("GraphQL", "/query")
-	return func(c *gin.Context) {
-		h.ServeHTTP(c.Writer, c.Request)
+	return func(w http.ResponseWriter, r *http.Request) {
+		h.ServeHTTP(w, r)
 	}
 }
 
@@ -75,9 +65,15 @@ func main() {
 	}
 
 	defer dbPool.Close()
-	// run read endpoint
-	r := gin.Default()
-	r.POST("/query", graphqlHandler(dbPool))
-	r.Run()
 
+	// Use Go's default HTTP server
+	http.HandleFunc("/query", graphqlHandler(dbPool))
+
+	// Start the server
+	port := "8080"
+	fmt.Printf("Starting server on :%s\n", port)
+	err = http.ListenAndServe(":"+port, nil)
+	if err != nil {
+		log.Fatalf("Server failed to start: %v", err)
+	}
 }

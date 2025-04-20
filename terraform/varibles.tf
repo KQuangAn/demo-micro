@@ -1,16 +1,58 @@
-variable "vpc_id" {
-  description = "Existing VPC to use (specify this, if you don't want to create new VPC)"
+variable "vpc_name" {
+  description = ""
   type        = string
-  default     = ""
+  default     = "vpc"
 }
 
 variable "cidr" {
-  description = "The CIDR block for the VPC. Default value is a valid CIDR, but not acceptable by AWS and should be overriden"
+  description = ""
   type        = string
-  default     = "0.0.0.0/0"
+  default     = "10.0.0.0/16"
 }
 
-variable "db_password" {
+variable "order_queue" {
+  type = string
+  sensitive = true
+}
+variable "github_token" {
+  type = string
+  sensitive = true
+}
+variable "notification_db_username" {
+  type = string
+  sensitive = true
+}
+variable "notification_db_password" {
+  type = string
+  sensitive = true
+}
+variable "notification_db_name" {
+  type = string
+  sensitive = true
+}
+
+variable "inventory_db_username" {
+  type = string
+  sensitive = true
+}
+variable "inventory_db_password" {
+  type = string
+  sensitive = true
+}
+variable "inventory_db_name" {
+  type = string
+  sensitive = true
+}
+
+variable "orders_db_username" {
+  type = string
+  sensitive = true
+}
+variable "orders_db_password" {
+  type = string
+  sensitive = true
+}
+variable "orders_db_name" {
   type = string
   sensitive = true
 }

@@ -1,20 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
+import { EventBridgeClient, PutEventsCommand, PutEventsRequestEntry } from '@aws-sdk/client-eventbridge';
 
 @Injectable()
 export class EventBridgeService {
   private client = new EventBridgeClient({ region: 'ap-southest-1' });
 
-  async publishInventoryUpdated(productId: string, quantity: number) {
+  async publishEvents(event: PutEventsRequestEntry[]) {
     const command = new PutEventsCommand({
-      Entries: [
-        {
-          EventBusName: 'app-events',
-          Source: 'inventory.service',
-          DetailType: 'InventoryUpdated',
-          Detail: JSON.stringify({ productId, quantity }),
-        },
-      ],
+      Entries: event
     });
 
     await this.client.send(command);

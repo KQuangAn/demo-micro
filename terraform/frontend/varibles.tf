@@ -1,16 +1,12 @@
-variable "vpc_id" {
-  description = "Existing VPC to use (specify this, if you don't want to create new VPC)"
-  type        = string
-  default     = ""
+variable "orders_service_url" {
+  type      = string
+  sensitive = true
 }
-
-variable "cidr" {
-  description = "The CIDR block for the VPC. Default value is a valid CIDR, but not acceptable by AWS and should be overriden"
-  type        = string
-  default     = "0.0.0.0/0"
+variable "notification_service_url" {
+  type      = string
+  sensitive = true
 }
-
-variable "db_password" {
-  type = string
+variable "inventory_service_url" {
+  type      = string
   sensitive = true
 }

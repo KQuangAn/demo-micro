@@ -21,7 +21,7 @@ export default async function Index({ searchParams }) {
   } = (await searchParams) ?? null;
   const products = mockProducts;
   const orderBy = getOrderBy(sort);
-  const categories = [];
+  const categories = await inventoryclient
 
   return (
     <div className="flex flex-col border-neutral-200 dark:border-neutral-700">

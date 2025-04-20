@@ -3,7 +3,7 @@ import { InputType, Field } from '@nestjs/graphql';
 @InputType()
 export class UpdateInventoryInput {
   @Field()
-  productId: string;
+  id: string;
 
   @Field()
   quantity: number;

@@ -1,0 +1,17 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model inventory {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.VarChar(255)
+  name        String    @db.VarChar(255)
+  description String?
+  quantity    Int
+  price       Float
+  updatedAt   DateTime? @default(now()) @db.Timestamp(6) @map("updated_at")
+}

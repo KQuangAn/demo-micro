@@ -1,24 +1,34 @@
 type Inventory {
-  # Example field (placeholder)
-  exampleField: Int
+  id: ID!
+  name: String!
+  description: String!
+  quantity: Int!
+  price: Float!
+  updatedAt: String!
 }
 
 input CreateInventoryInput {
-  # Example field (placeholder)
-  exampleField: Int
+  name: String!
+  description: String!
+  quantity: Int!
+  price: Float!
 }
 
 input UpdateInventoryInput {
-  id: Int!
+  id: ID!
+  name: String
+  description: String
+  quantity: Int
+  price: Float
 }
 
 type Query {
-  inventory: [Inventory]!
-  inventory(id: Int!): Inventory
+  getInventory(id: ID!): Inventory
+  allInventory: [Inventory!]!
 }
 
 type Mutation {
   createInventory(createInventoryInput: CreateInventoryInput!): Inventory!
   updateInventory(updateInventoryInput: UpdateInventoryInput!): Inventory!
-  removeInventory(id: Int!): Inventory
+  removeInventory(id: ID!): Inventory
 }

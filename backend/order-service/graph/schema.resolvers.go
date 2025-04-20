@@ -80,6 +80,7 @@ func (r *mutationResolver) CreateOrder(ctx context.Context, productID string, qu
 
 // Orders is the resolver for the orders field.
 func (r *queryResolver) Orders(ctx context.Context) ([]*model.Order, error) {
+	fmt.Println("qrqjwrqwejkrnqwjkenr")
 	rows, err := r.DB.Query(ctx, "SELECT id, product_id, quantity, status FROM orders")
 	if err != nil {
 		return nil, err
@@ -99,7 +100,22 @@ func (r *queryResolver) Orders(ctx context.Context) ([]*model.Order, error) {
 
 // Order is the resolver for the order field.
 func (r *queryResolver) Order(ctx context.Context, id string) (*model.Order, error) {
-	panic(fmt.Errorf("not implemented: Order - order"))
+	fmt.Println("qrqjwrqwejkrnqwjkenr")
+	rows, err := r.DB.Query(ctx, "SELECT id, product_id, quantity, status FROM orders")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orders *model.Order
+	for rows.Next() {
+		var o model.Order
+		if err := rows.Scan(&o.ID, &o.ProductID, &o.Quantity, &o.Status); err != nil {
+			return nil, err
+		}
+		orders = &o
+	}
+	return orders, nil
 }
 
 // Mutation returns MutationResolver implementation.

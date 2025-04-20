@@ -36,30 +36,10 @@ func NewDBPool(ctx context.Context) (*DBPool, error) {
 	}
 
 	log.Println("Connected to the database")
-	if err := testQuery(pool); err != nil {
-		return nil, fmt.Errorf("failed to run test query: %w", err)
-	}
+
 	return &DBPool{Pool: pool}, nil
 }
-func testQuery(pool *pgxpool.Pool) error {
-	// Simple query to check the connection
-	rows, err := pool.Query(context.Background(), "SELECT NOW()")
-	if err != nil {
-		return fmt.Errorf("query failed: %w", err)
-	}
-	defer rows.Close()
 
-	// Read the result
-	var currentTime string
-	if rows.Next() {
-		if err := rows.Scan(&currentTime); err != nil {
-			return fmt.Errorf("failed to scan row: %w", err)
-		}
-	}
-
-	log.Printf("Current time from DB: %s\n", currentTime)
-	return nil
-}
 func (db *DBPool) Close() {
 	if db.Pool != nil {
 		db.Pool.Close()

@@ -1,15 +1,15 @@
 import { Module } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { InventoryResolver } from './inventory.resolver';
-import { EventBridgeService } from '../eventbridge/eventbridge.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaModule } from '../prisma/prisma.module';
+import { EventBridgeModule } from 'src/eventbridge/eventbridge.module';
 
 @Module({
+  imports: [PrismaModule, EventBridgeModule],
   providers: [
     InventoryService,
     InventoryResolver,
-    EventBridgeService,
-    PrismaService,
   ],
+  exports: [InventoryService]
 })
-export class InventoryModule {}
+export class InventoryModule { }

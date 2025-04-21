@@ -24,20 +24,6 @@ func init() {
 
 }
 
-func SendEventToQueue(queueUrl string, event interface{}) error {
-
-	messageBody, err := json.Marshal(event)
-	if err != nil {
-		return err
-	}
-
-	_, err = client.SendMessage(context.TODO(), &sqs.SendMessageInput{
-		QueueUrl:    aws.String(queueUrl),
-		MessageBody: aws.String(string(messageBody)),
-	})
-	return err
-}
-
 func StartSQSConsumer(pushToBridge func(message string), queueURL string) {
 	ctx := context.Background()
 
@@ -55,8 +41,8 @@ func StartSQSConsumer(pushToBridge func(message string), queueURL string) {
 func receiveMessages(ctx context.Context, queueURL string) *sqs.ReceiveMessageOutput {
 	output, err := client.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(queueURL),
-		MaxNumberOfMessages: 10,
-		WaitTimeSeconds:     5,
+		MaxNumberOfMessages: MAX_NUMBER_OF_MESSAGE,
+		WaitTimeSeconds:     WAIT_TIME_SECONDS,
 	})
 	if err != nil {
 		log.Printf("error receiving message: %v", err)

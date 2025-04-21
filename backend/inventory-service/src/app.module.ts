@@ -2,29 +2,34 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { InventoryModule } from './inventory/inventory.module';
 import { Module } from '@nestjs/common';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
-import { QueueModule, SQSModule } from './queue/queue.module';
+import { QueueModule } from './queue/queue.module';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { join } from 'path';
 import { getEnv } from 'config';
+import { EventEmitterModule } from './event-emitter/event-emitter.module';
+import { ApolloClientModule } from './apollo-client/apollo-client.module';
+import { MessageHandlerModule } from './queue/message-handler/message-handler.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(
-      {
-        isGlobal: true,
-        load: [getEnv]
-      }
-    ),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [getEnv],
+    }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
     }),
+    AuthModule,
+    EventEmitterModule,
+    MessageHandlerModule,
+    PrismaModule,
+    ApolloClientModule,
+    QueueModule,
     InventoryModule,
-    QueueModule, AuthModule, PrismaModule
   ],
   providers: [],
 })
-export class AppModule { }
-
+export class AppModule {}

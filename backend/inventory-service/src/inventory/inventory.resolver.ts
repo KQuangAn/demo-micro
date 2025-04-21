@@ -4,11 +4,9 @@ import { CreateInventoryInput } from './dto/create-inventory.input';
 import { UpdateInventoryInput } from './dto/update-inventory.input';
 import { Inventory } from './entities/inventory.entity';
 
-
-
 @Resolver(() => Inventory)
 export class InventoryResolver {
-  constructor(private inventoryService: InventoryService) { }
+  constructor(private inventoryService: InventoryService) {}
 
   @Query(() => Inventory)
   async getInventory(@Args('id') id: string) {
@@ -21,13 +19,20 @@ export class InventoryResolver {
   }
 
   @Mutation(() => Inventory)
-  async createInventory(@Args('createInventoryInput') createInventoryInput: CreateInventoryInput) {
+  async createInventory(
+    @Args('createInventoryInput') createInventoryInput: CreateInventoryInput,
+  ) {
     return this.inventoryService.create(createInventoryInput);
   }
 
   @Mutation(() => Inventory)
-  async updateInventory(@Args('updateInventoryInput') updateInventoryInput: UpdateInventoryInput) {
-    return this.inventoryService.update(updateInventoryInput.id, updateInventoryInput);
+  async updateInventory(
+    @Args('updateInventoryInput') updateInventoryInput: UpdateInventoryInput,
+  ) {
+    return this.inventoryService.update(
+      updateInventoryInput.id,
+      updateInventoryInput,
+    );
   }
 
   @Mutation(() => Inventory)

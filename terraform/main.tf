@@ -23,14 +23,13 @@ module "notification-service" {
 module "frontend" {
   depends_on               = [module.inventory-service, module.order-service, module.notification-service]
   source                   = "./frontend"
-  github_token             = var.github_token
   orders_service_url       = module.order-service.orders_db_endpoint
   inventory_service_url    = module.inventory-service.inventory_db_endpoint
   notification_service_url = module.notification-service.notification_db_endpoint
 }
 
 locals {
-  region = "eu-west-1"
+  region = "ap-southest"
   name   = "ex-${basename(path.cwd)}"
 
   vpc_cidr = "10.0.0.0/16"
@@ -70,7 +69,7 @@ module "ecs_cluster" {
 }
 
 ################################################################################
-# Service
+# Service // healthcheck 
 ################################################################################
 
 module "ecs_service" {
@@ -199,7 +198,7 @@ module "ecs_service" {
 }
 
 ################################################################################
-# Standalone Task Definition (w/o Service)
+# Standalone Task Definition (w/o Service) blueprint for building ecs container / dockerfile 
 ################################################################################
 
 module "ecs_task_definition" {
@@ -351,4 +350,12 @@ module "vpc" {
     tags = local.tags
   }
 
+}
+
+resource "aws_cloudwatch_eventbus" "evbus" {
+  name = "evbus"
+}
+
+output "event_bus_arn" {
+  value = aws_cloudwatch_eventbus.evbus.arn
 }

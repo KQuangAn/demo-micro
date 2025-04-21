@@ -1,15 +1,17 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { InventoryResolver } from './inventory.resolver';
 import { PrismaModule } from '../prisma/prisma.module';
-import { EventBridgeModule } from 'src/eventbridge/eventbridge.module';
+import { EventEmitterModule } from 'src/event-emitter/event-emitter.module';
+import { ApolloClientModule } from 'src/apollo-client/apollo-client.module';
 
 @Module({
-  imports: [PrismaModule, EventBridgeModule],
-  providers: [
-    InventoryService,
-    InventoryResolver,
+  imports: [
+    PrismaModule,
+    EventEmitterModule,
+    ApolloClientModule.forFeature(process.env.ORDERS_URL),
   ],
-  exports: [InventoryService]
+  providers: [InventoryService, InventoryResolver],
+  exports: [InventoryService],
 })
-export class InventoryModule { }
+export class InventoryModule {}

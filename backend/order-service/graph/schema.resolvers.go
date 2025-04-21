@@ -12,7 +12,6 @@ import (
 	"orderservice/graph/model"
 	"orderservice/internal/eventbridge"
 	"orderservice/internal/models"
-	"orderservice/internal/sqs"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -37,13 +36,20 @@ func (r *mutationResolver) CreateOrder(ctx context.Context, productID string, qu
 	}
 
 	// 3. Push the order creation event to SQS
-	event := models.Order{
+	detail := models.Order{
 		ID:        order.ID,
 		ProductID: order.ProductID,
 		Quantity:  order.Quantity,
 		Status:    order.Status,
 	}
-	err = sqs.SendEventToQueue("orderCreatedQueue", event) // `SendEventToQueue` is a helper function for SQS
+	orderCreatedEvent := ebTypes.PutEventsRequestEntry{
+		Source:       aws.String("qwefqef"),
+		DetailType:   aws.String("323423"),
+		Detail:       aws.String(string(detail)),
+		EventBusName: aws.String("qwefqef"),
+	}
+
+	err = eventbridge.SendEvent(orderCreatedEvent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send order event to SQS: %v", err)
 	}

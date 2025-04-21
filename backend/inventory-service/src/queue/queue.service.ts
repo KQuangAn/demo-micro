@@ -1,52 +1,39 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from '@aws-sdk/client-sqs';
-import { InventoryService } from '../inventory/inventory.service';
-import { IQueueService } from './queue.interface';
-import { ConfigService } from '@nestjs/config';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { IQueueService } from './queue.service.interface';
+import { IQueueClient } from './queue.client.interface';
+import { QueueMessage } from 'src/common/types';
+import { IMessageHandler } from './message-handler/message-handler.interface';
 
 @Injectable()
 export class QueueService implements OnModuleInit, IQueueService {
-  private readonly client = new SQSClient({ region: process.env.AWS_REGION, endpoint: this.queueUrl });
-  private readonly queueUrl: string;
-
-  constructor(private readonly client: SQSClient, private readonly inventoryService: InventoryService, private readonly configService: ConfigService) {
-    this.queueUrl = this.configService.get<string>('SQS_QUEUE_URL')!;
-  }
+  constructor(
+    @Inject('QUEUE_CLIENT') private client: IQueueClient,
+    @Inject('MESSAGE_HANLDER') private readonly messageHandler: IMessageHandler,
+  ) {}
 
   async onModuleInit() {
     this.pollMessages();
   }
 
   async pollMessages() {
-    const queueUrl = this.configService.get("SQS_QUEUE_URL");
     while (true) {
-      const command = new ReceiveMessageCommand({
-        QueueUrl: queueUrl,
-        MaxNumberOfMessages: 5,
-        WaitTimeSeconds: 20,
-      });
+      const response = await this.client.recieve();
 
-      const response = await this.client.send(command);
-
-      for (const message of response.Messages || []) {
+      for (const message of response?.Messages || []) {
         try {
-          const body = JSON.parse(message.Body ?? '{}');
-          const detail = JSON.parse(body?.detail ?? '{}');
-
-          const { productId, quantity } = detail;
-
-          if (productId && quantity !== undefined) {
-            await this.inventoryService.update(productId, { quantity });
-          }
-
-          await this.client.send(
-            new DeleteMessageCommand({
-              QueueUrl: queueUrl,
-              ReceiptHandle: message.ReceiptHandle!,
-            }),
-          );
+          //validate
+          console.log(message);
+          const body = JSON.parse(message?.Body ?? '{}');
+          //const detail = JSON.parse(body?.detail ?? '{}');
+          console.log(body);
+          QueueMessage.parse(body);
+          //process
+          await this.messageHandler.process(message);
+          //delet
+          await this.client.delete(message);
         } catch (err) {
           console.error('Error processing message', err);
+          await this.client.delete(message); // delete err messages
         }
       }
     }

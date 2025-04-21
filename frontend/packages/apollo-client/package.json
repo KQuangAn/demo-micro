@@ -1,26 +1,29 @@
 {
   "name": "@repo/apollo-client",
   "type": "module",
-  "scripts": {
-    "dev": "tsc --watch",
-    "build": "tsc"
-  },
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    "./apollo-client": {
-      "types": "././apollo-client",
-      "default": "./dist/add.js"
-    },
-    "./subtract": {
-      "types": "./src/subtract.ts",
-      "default": "./dist/subtract.js"
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     }
   },
-  "devDependencies": {
-    "typescript": "workspace:*",
+  "scripts": {
+    "dev": "tsc --watch --project tsconfig.build.json",
+    "build": "tsc --project tsconfig.build.json",
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit --project tsconfig.build.json"
+  },
+  "dependencies": {
     "@apollo/client": "^3.13.8",
     "@apollo/server": "^4.12.0",
-    "@graphql-codegen/cli": "^5.0.5",
-    "@tailwindcss/postcss": "^4.1.4",
     "graphql": "^16.10.0"
+  },
+  "devDependencies": {
+    "@graphql-codegen/cli": "^5.0.5",
+    "@tailwindcss/postcss": "^4.1.4"
   }
 }

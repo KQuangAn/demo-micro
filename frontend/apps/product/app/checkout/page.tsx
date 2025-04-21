@@ -1,5 +1,4 @@
 import Link from "next/link";
-import CheckoutStatus from "../../modules/components/checkout-status";
 
 const CheckoutPage = () => {
   const priceTotal = 1;
@@ -9,7 +8,7 @@ const CheckoutPage = () => {
       <div className="container">
         <div className="cart__intro">
           <h3 className="cart__title">Shipping and Payment</h3>
-          <CheckoutStatus step="checkout" />
+          {/* <CheckoutStatus step="checkout" /> */}
         </div>
 
         <div className="checkout-content">

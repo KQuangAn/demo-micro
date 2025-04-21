@@ -10,7 +10,7 @@ import { writeLocalCart, getLocalCart } from "../lib/cart";
 
 const CartContext = createContext({
   cart: null,
-  loading: true,
+  loading: false,
   refreshCart: () => {},
   dispatchCart: (object: unknown) => {},
 });
@@ -21,7 +21,7 @@ export const useCartContext = () => {
 
 export const CartContextProvider = ({ children }: { children: ReactNode }) => {
   const [cart, setCart] = useState(() => getLocalCart());
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const dispatchCart = async (cart) => {
     setCart(cart);

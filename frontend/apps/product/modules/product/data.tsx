@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 import CartButton from "./cart_button";
-import { Badge } from "lucide-react";
 import { Separator } from "../components/ui/separator";
+import { Badge } from "../components/ui/badge";
 
 export const DataSection = async ({ product }: { product: unknown }) => {
   function Price() {

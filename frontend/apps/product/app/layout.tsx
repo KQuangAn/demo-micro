@@ -1,11 +1,11 @@
 import { ModalProvider } from "../modules/providers/modal-provider";
-import { ThemeProvider } from "../modules/providers/theme-provider";
 import { ToastProvider } from "../modules/providers/toast-provider";
 import { Inter } from "next/font/google";
 
 import "./globals.css";
 import Header from "../modules/components/native/nav/parent";
 import Footer from "../modules/components/native/Footer";
+import ThemeProvider from "../modules/providers/theme-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 

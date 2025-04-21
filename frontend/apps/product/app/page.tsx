@@ -8,10 +8,19 @@ import { Heading } from "../modules/components/native/heading";
 import { mockProducts } from "../modules/mock";
 import { banners } from "../modules/constant";
 import { getOrderBy } from "../modules/utils";
-import { SortBy, CategoriesCombobox, AvailableToggle } from "../modules/product/options";
+import {
+  SortBy,
+  CategoriesCombobox,
+  AvailableToggle,
+} from "../modules/product/options";
 import { Separator } from "../modules/components/ui/separator";
+import { GET_ALL_INVENTORY, inventoryClient } from "@repo/apollo-client";
 
-export default async function Index({ searchParams }) {
+export default async function Index({
+  searchParams,
+}: {
+  searchParams: unknown;
+}) {
   const {
     sort,
     isAvailable,
@@ -21,7 +30,7 @@ export default async function Index({ searchParams }) {
   } = (await searchParams) ?? null;
   const products = mockProducts;
   const orderBy = getOrderBy(sort);
-  const categories = await inventoryclient
+  const categories = await inventoryClient.query({ query: GET_ALL_INVENTORY });
 
   return (
     <div className="flex flex-col border-neutral-200 dark:border-neutral-700">

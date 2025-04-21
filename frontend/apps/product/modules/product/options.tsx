@@ -103,7 +103,7 @@ export function CategoriesCombobox({ categories, initialCategory }) {
           <CommandInput placeholder="Search category..." />
           <CommandEmpty>No category found.</CommandEmpty>
           <CommandGroup>
-            {categories.map((category) => (
+            {categories?.map((category) => (
               <CommandItem
                 key={category.title}
                 onSelect={(currentValue) => {

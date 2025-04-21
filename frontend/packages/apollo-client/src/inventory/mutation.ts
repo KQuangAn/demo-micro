@@ -1,6 +1,6 @@
 // mutations.ts
 import { gql } from '@apollo/client';
-import { TCreateInventoryInput, TUpdateInventoryInput, TRemoveInventoryInput } from './types';
+import { TCreateInventoryInput, TUpdateInventoryInput, TRemoveInventoryInput } from './types.js';
 
 export const CREATE_INVENTORY_ITEM = (input: TCreateInventoryInput) => gql`
   mutation CreateInventoryItem {

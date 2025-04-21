@@ -2,7 +2,10 @@ import { ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
 import { DataSection } from "../../../modules/product/data";
 import Carousel from "../../../modules/components/native/Carousel";
-
+import {
+  GET_INVENTORY_ITEMS_BY_ID,
+  inventoryClient,
+} from "@repo/apollo-client";
 
 type Props = {
   params: { productId: string };
@@ -34,7 +37,17 @@ export default async function Product({
 }: {
   params: { productId: string };
 }) {
-  const product = [];
+  const res = await inventoryClient.query({
+    query: GET_INVENTORY_ITEMS_BY_ID,
+    variables: {
+      id: params.productId,
+    },
+  });
+  if (res.error) {
+    return <div>Error fetching data</div>;
+  }
+
+  const product = res.data;
 
   return (
     <>

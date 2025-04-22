@@ -45,100 +45,10 @@ data "aws_iam_policy_document" "orders_sqs_policy" {
     ]
   }
 }
-
-data "aws_iam_policy_document" "notification_queue_policy" {
-  statement {
-    sid    = "notificationsqstatement"
-    effect = "Allow"
-
-    principals {
-      type        = "AWS"
-      identifiers = ["*"]
-    }
-
-    actions = [
-      "sqs:SendMessage",
-      "sqs:ReceiveMessage"
-    ]
-    resources = [
-      aws_sqs_queue.notification_queue.arn
-    ]
-  }
-}
-
-
-resource "aws_sqs_queue_policy" "notification_queue_policy" {
-  queue_url = aws_sqs_queue.notification_queue.id
-  policy    = data.aws_iam_policy_document.notification_queue_policy.json
-}
-
-
 resource "aws_sqs_queue_policy" "orders_sqs_policy" {
   queue_url = aws_sqs_queue.orders_queue.id
   policy    = data.aws_iam_policy_document.orders_sqs_policy.json
 }
-
-module "eventbridge" {
-  source  = "terraform-aws-modules/eventbridge/aws"
-  version = "~> 3.16"
-
-  bus_name = "evbus"
-
-  rules = {
-    order_created = {
-      description = "Capture OrderCreated events"
-      event_pattern = jsonencode({
-        "source" : ["com.orderservice"],
-        "detail-type" : ["OrderCreated"]
-      })
-      enabled = true
-    }
-  }
-
-  targets = {
-    order_created = [
-      {
-        name              = "send-to-notification-sqs"
-        input_transformer = local.order_input_transformer
-        arn               = aws_sqs_queue.notification_queue.arn
-        message_group_id  = "order-created-group"
-      }
-    ]
-  }
-
-  tags = {
-    Name = "evbus"
-  }
-}
-
-
-locals {
-  order_input_transformer = {
-    input_paths = {
-      order_id = "$.detail.order_id"
-    }
-    input_template = <<-EOF
-    {
-      "id": <order_id>
-    }
-    EOF
-  }
-}
-
-
-resource "aws_sqs_queue" "notification_queue" {
-  name                        = "notification-queue.fifo"
-  delay_seconds               = 0  # delay before consumer can access
-  visibility_timeout_seconds  = 30 # prevents multiple consumers from processing the same message
-  max_message_size            = 2048
-  message_retention_seconds   = 86400
-  receive_wait_time_seconds   = 5
-  sqs_managed_sse_enabled     = true
-  fifo_queue                  = true
-  content_based_deduplication = true
-}
-
-
 
 
 resource "aws_db_instance" "postgres" {

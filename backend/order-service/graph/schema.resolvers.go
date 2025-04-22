@@ -75,12 +75,106 @@ func (r *mutationResolver) CreateOrder(ctx context.Context, productID string, qu
 
 // UpdateOrder is the resolver for the updateOrder field.
 func (r *mutationResolver) UpdateOrder(ctx context.Context, id string, productID string, quantity int32) (*model.Order, error) {
-	panic(fmt.Errorf("not implemented: UpdateOrder - updateOrder"))
+	tx, err := r.DB.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create order: %v", err)
+	}
+	orderID := fmt.Sprintf("%d", time.Now().UnixNano())
+
+	order := model.Order{
+		ID:        orderID,
+		ProductID: productID,
+		Quantity:  quantity,
+		Status:    model.OrderStatusPending,
+	}
+
+	_, err = tx.Exec(ctx, `INSERT INTO orders (id, product_id, quantity, status, created_at) VALUES ($1, $2, $3, $4, $5)`,
+		order.ID, order.ProductID, order.Quantity, order.Status)
+	if err != nil {
+		tx.Rollback(ctx)
+		return nil, fmt.Errorf("failed to create order: %v", err)
+	}
+
+	// emit order created event
+	detail := models.Order{
+		ID:        order.ID,
+		ProductID: order.ProductID,
+		Quantity:  order.Quantity,
+		Status:    model.OrderStatusPending.String(),
+	}
+
+	detailJSON, err := json.Marshal(detail)
+	if err != nil {
+		tx.Rollback(ctx)
+		log.Fatalf("failed to marshal order detail: %v", err)
+	}
+
+	orderCreatedEvent := ebTypes.PutEventsRequestEntry{
+		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
+		DetailType:   aws.String(string(enums.EVENT_TYPE.OrderCreated)),
+		Detail:       aws.String(string(detailJSON)),
+		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
+	}
+
+	err = eventbridge.SendEvent(orderCreatedEvent)
+	if err != nil {
+		tx.Rollback(ctx)
+		return nil, fmt.Errorf("failed to send order event to SQS: %v", err)
+	}
+
+	return &order, nil
 }
 
 // CancelOrder is the resolver for the cancelOrder field.
 func (r *mutationResolver) CancelOrder(ctx context.Context, id string) (*model.Order, error) {
-	panic(fmt.Errorf("not implemented: CancelOrder - cancelOrder"))
+	tx, err := r.DB.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create order: %v", err)
+	}
+	orderID := fmt.Sprintf("%d", time.Now().UnixNano())
+
+	order := model.Order{
+		ID:        orderID,
+		ProductID: productID,
+		Quantity:  quantity,
+		Status:    model.OrderStatusPending,
+	}
+
+	_, err = tx.Exec(ctx, `INSERT INTO orders (id, product_id, quantity, status, created_at) VALUES ($1, $2, $3, $4, $5)`,
+		order.ID, order.ProductID, order.Quantity, order.Status)
+	if err != nil {
+		tx.Rollback(ctx)
+		return nil, fmt.Errorf("failed to create order: %v", err)
+	}
+
+	// emit order created event
+	detail := models.Order{
+		ID:        order.ID,
+		ProductID: order.ProductID,
+		Quantity:  order.Quantity,
+		Status:    model.OrderStatusPending.String(),
+	}
+
+	detailJSON, err := json.Marshal(detail)
+	if err != nil {
+		tx.Rollback(ctx)
+		log.Fatalf("failed to marshal order detail: %v", err)
+	}
+
+	orderCreatedEvent := ebTypes.PutEventsRequestEntry{
+		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
+		DetailType:   aws.String(string(enums.EVENT_TYPE.OrderCreated)),
+		Detail:       aws.String(string(detailJSON)),
+		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
+	}
+
+	err = eventbridge.SendEvent(orderCreatedEvent)
+	if err != nil {
+		tx.Rollback(ctx)
+		return nil, fmt.Errorf("failed to send order event to SQS: %v", err)
+	}
+
+	return &order, nil
 }
 
 // Orders is the resolver for the orders field.

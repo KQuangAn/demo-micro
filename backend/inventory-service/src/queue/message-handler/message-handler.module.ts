@@ -12,7 +12,7 @@ import { ApolloClientModule } from 'src/apollo-client/apollo-client.module';
     InventoryModule,
     PrismaModule,
     EventEmitterModule,
-    ApolloClientModule.forFeature(process.env.ORDERS_URL) ,
+    ApolloClientModule.forFeature(process.env.ORDERS_URL || ''),
   ],
   providers: [PrismaService, InventoryService, InventoryMessageHandler],
   exports: [PrismaService, InventoryService, InventoryMessageHandler],

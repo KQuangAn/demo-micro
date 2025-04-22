@@ -1,17 +1,14 @@
-import Image from "next/image";
-import Link from "next/link";
-import { Card, CardHeader, CardContent, CardFooter } from "../ui/card";
-import { ImageSkeleton } from "./icons";
-import { Badge } from "../ui/badge";
+import Image from 'next/image';
+import Link from 'next/link';
+import { Card, CardHeader, CardContent, CardFooter } from '../ui/card';
+import { ImageSkeleton } from './icons';
+import { Badge } from '../ui/badge';
+import { TInventory } from '@repo/apollo-client';
 
-export const ProductGrid = ({
-  products,
-}: {
-  products: ProductWithIncludes[];
-}) => {
+export const ProductGrid = ({ products }: { products: TInventory[] }) => {
   return (
     <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-      {products.map((product) => (
+      {products?.map((product) => (
         <Product product={product} key={product.id} />
       ))}
     </div>
@@ -28,7 +25,7 @@ export const ProductSkeletonGrid = () => {
   );
 };
 
-export const Product = ({ product }: { product: ProductWithIncludes }) => {
+export const Product = ({ product }: { product: TInventory }) => {
   function Price() {
     if (product?.discount > 0) {
       const price = product?.price - product?.discount;
@@ -58,7 +55,7 @@ export const Product = ({ product }: { product: ProductWithIncludes }) => {
               alt="product image"
               fill
               sizes="(min-width: 1000px) 30vw, 50vw"
-              style={{ objectFit: "cover" }}
+              style={{ objectFit: 'cover' }}
             />
           </div>
         </CardHeader>
@@ -67,13 +64,13 @@ export const Product = ({ product }: { product: ProductWithIncludes }) => {
             {product?.categories[0]?.title}
           </Badge>
 
-          <h2 className="mt-2">{product.title}</h2>
+          <h2 className="mt-2">{product?.title}</h2>
           <p className="text-xs text-neutral-500 text-justify">
-            {product.description}
+            {product?.description}
           </p>
         </CardContent>
         <CardFooter>
-          {product?.isAvailable ? (
+          {product?.quantity > 0 ? (
             <Price />
           ) : (
             <Badge variant="secondary">Out of stock</Badge>

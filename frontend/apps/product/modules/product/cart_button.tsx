@@ -1,16 +1,17 @@
-"use client";
+'use client';
 
-import { MinusIcon, PlusIcon, ShoppingBasketIcon, X } from "lucide-react";
-import { useState } from "react";
-import { Spinner } from "../components/native/icons";
-import { Button } from "../components/ui/button";
-import { getCountInCart, getLocalCart } from "../lib/cart";
+import { MinusIcon, PlusIcon, ShoppingBasketIcon, X } from 'lucide-react';
+import { useState } from 'react';
+import { Spinner } from '../components/native/icons';
+import { getCountInCart, getLocalCart } from '../lib/cart';
 import {
   CartContextProvider,
   useCartContext,
-} from "../providers/cart-provider";
+} from '../providers/cart-provider';
+import { Button } from '../components/ui/button';
+import { TInventory } from '@repo/apollo-client';
 
-export default function CartButton({ product }) {
+export default function CartButton({ product }: TInventory) {
   return (
     <CartContextProvider>
       <ButtonComponent product={product} />
@@ -18,7 +19,7 @@ export default function CartButton({ product }) {
   );
 }
 
-export function ButtonComponent({ product }) {
+export function ButtonComponent({ product }: TInventory) {
   const { loading, cart, refreshCart, dispatchCart } = useCartContext();
 
   const [fetchingCart, setFetchingCart] = useState(false);
@@ -40,29 +41,31 @@ export function ButtonComponent({ product }) {
         cartItems: cart?.items,
         productId: product?.id,
       });
+      if (count > product?.quantity) {
+        throw Error;
+      }
+      // const response = await fetch(`/api/cart`, {
+      //   method: "POST",
+      //   body: JSON.stringify({
+      //     productId: product?.id,
+      //     count:
+      //       getCountInCart({
+      //         cartItems: cart?.items,
+      //         productId: product?.id,
+      //       }) + 1,
+      //   }),
+      //   cache: "no-store",
+      //   headers: {
+      //     "Content-Type": "application/json-string",
+      //   },
+      // });
 
-      const response = await fetch(`/api/cart`, {
-        method: "POST",
-        body: JSON.stringify({
-          productId: product?.id,
-          count:
-            getCountInCart({
-              cartItems: cart?.items,
-              productId: product?.id,
-            }) + 1,
-        }),
-        cache: "no-store",
-        headers: {
-          "Content-Type": "application/json-string",
-        },
-      });
+      // const json = await response.json();
 
-      const json = await response.json();
-
-      dispatchCart(json);
+      //dispatchCart(json);
 
       const localCart = getLocalCart() as any;
-
+      console.log(localCart);
       // if already in cart => ++ 1
       if (count > 0) {
         for (let i = 0; i < localCart.items.length; i++) {
@@ -73,6 +76,7 @@ export function ButtonComponent({ product }) {
 
         dispatchCart(localCart);
       }
+      console.log('12312', localCart);
 
       if (count < 1) {
         localCart.items.push({
@@ -85,8 +89,11 @@ export function ButtonComponent({ product }) {
       }
 
       setFetchingCart(false);
+      console.log('done');
     } catch (error) {
       console.error({ error });
+    } finally {
+      setFetchingCart(false);
     }
   }
 
@@ -98,26 +105,6 @@ export function ButtonComponent({ product }) {
         cartItems: cart?.items,
         productId: product?.id,
       });
-
-      const response = await fetch(`/api/cart`, {
-        method: "POST",
-        body: JSON.stringify({
-          productId: product?.id,
-          count:
-            getCountInCart({
-              cartItems: cart?.items,
-              productId: product?.id,
-            }) - 1,
-        }),
-        cache: "no-store",
-        headers: {
-          "Content-Type": "application/json-string",
-        },
-      });
-
-      const json = await response.json();
-
-      dispatchCart(json);
 
       const localCart = getLocalCart() as any;
       const index = findLocalCartIndexById(localCart, product?.id);
@@ -141,6 +128,8 @@ export function ButtonComponent({ product }) {
       setFetchingCart(false);
     } catch (error) {
       console.error({ error });
+    } finally {
+      setFetchingCart(false);
     }
   }
 

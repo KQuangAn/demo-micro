@@ -3,16 +3,21 @@
 # ------------------------------------------------------
 
 type Inventory {
-  id: String!
-  name: String!
+  id: ID!
+  title: String!
+  brand: String!
   description: String!
+  images: [String!]!
+  categories: [String!]!
   quantity: Int!
   price: Float!
+  discount: Float
+  createdAt: String!
   updatedAt: String!
 }
 
 type Query {
-  getInventory(id: String!): Inventory!
+  getInventory(id: ID!): Inventory!
   allInventory: [Inventory!]!
 }
 
@@ -23,13 +28,24 @@ type Mutation {
 }
 
 input CreateInventoryInput {
-  description: String!
-  name: String!
+  title: String!
+  brand: String!
+  description: String
+  images: [String!]!
+  categories: [String!]!
   quantity: Float!
   price: Float!
+  discount: Float
 }
 
 input UpdateInventoryInput {
   id: String!
-  quantity: Float!
+  title: String
+  brand: String
+  description: String
+  images: [String!]
+  categories: [String!]
+  quantity: Float
+  price: Float
+  discount: Float
 }

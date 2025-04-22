@@ -1,21 +1,22 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { Button } from "../../components/ui/button";
+import Link from 'next/link';
+import { Button } from '../../components/ui/button';
 import {
   Card,
   CardHeader,
   CardContent,
   CardFooter,
-} from "../../components/ui/card";
-import { useAuthenticated } from "../../hooks/useAuthenticated";
-import { isVariableValid } from "../../lib/utils";
-import { useCartContext } from "../../providers/cart-provider";
-import { Separator } from "../../components/ui/separator";
+} from '../../components/ui/card';
+import { isVariableValid } from '../../lib/utils';
+import { useCartContext } from '../../providers/cart-provider';
+import { Separator } from '../../components/ui/separator';
 
 export function Receipt() {
-  const { authenticated } = useAuthenticated();
+  //const { authenticated } = useAuthenticated();
   const { loading, cart, refreshCart, dispatchCart } = useCartContext();
+
+  const handleCheckout = async () => {};
 
   function calculatePayableCost() {
     let totalAmount = 0,
@@ -42,7 +43,7 @@ export function Receipt() {
   }
 
   return (
-    <Card className={loading ? "animate-pulse" : ""}>
+    <Card className={loading ? 'animate-pulse' : ''}>
       <CardHeader className="p-4 pb-0">
         <h2 className="font-bold tracking-tight">Receipt</h2>
       </CardHeader>
@@ -69,16 +70,13 @@ export function Receipt() {
       </CardContent>
       <Separator />
       <CardFooter>
-        <Link href={authenticated ? "/checkout" : "/login"} className="w-full">
-          <Button
-            disabled={
-              !isVariableValid(cart?.items) || cart["items"].length === 0
-            }
-            className="w-full"
-          >
-            Checkout
-          </Button>
-        </Link>
+        <Button
+          onClick={handleCheckout}
+          disabled={!isVariableValid(cart?.items) || cart['items'].length === 0}
+          className="w-full"
+        >
+          Checkout
+        </Button>
       </CardFooter>
     </Card>
   );

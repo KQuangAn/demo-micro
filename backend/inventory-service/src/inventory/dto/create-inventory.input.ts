@@ -3,14 +3,26 @@ import { InputType, Field } from '@nestjs/graphql';
 @InputType()
 export class CreateInventoryInput {
   @Field()
-  description: string;
+  title: string;
 
   @Field()
-  name: string;
+  brand: string;
+
+  @Field({ nullable: true })
+  description?: string;
+
+  @Field(() => [String])
+  images: string[];
+
+  @Field(() => [String])
+  categories: string[];
 
   @Field()
   quantity: number;
 
   @Field()
   price: number;
+
+  @Field({ nullable: true })
+  discount?: number;
 }

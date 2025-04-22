@@ -1,4 +1,5 @@
 import json
+import os
 import boto3
 import psycopg2
 import requests
@@ -9,11 +10,10 @@ from requests.exceptions import RequestException
 # AWS Setup
 eventbridge_client = boto3.client('events')
 sqs_client = boto3.client('sqs')
-QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/YOUR_ACCOUNT_ID/YOUR_QUEUE_NAME'
+QUEUE_URL = os.getenv("QUEUE_URL")
 
 # GraphQL Endpoint for updating notifications in PostgreSQL
-GRAPHQL_URL = 'http://your-graphql-api-endpoint/graphql'
-
+GRAPHQL_URL = os.getenv("GRAPHQL_URL")
 # Function to fetch events from SQS
 def get_sqs_messages(queue_url: str, max_messages: int = 10, wait_time: int = 10):
     response = sqs_client.receive_message(
@@ -45,7 +45,7 @@ def send_notification(notification_data: dict) -> bool:
         return False
 
 # Function to update PostgreSQL via GraphQL
-def update_postgres_notification_status(notification_id: str, status: str):
+def update_notification_status(notification_id: str, status: str):
     query = """
         mutation UpdateNotificationStatus($notificationId: String!, $status: String!) {
             updateNotificationStatus(notificationId: $notificationId, status: $status) {
@@ -97,10 +97,10 @@ def process_sqs_messages():
 
             if notification_sent:
                 # Update notification status to 'sent' in PostgreSQL via GraphQL
-                update_postgres_notification_status(notification_id, "sent")
+                update_notification_status(notification_id, "sent")
             else:
                 # If sending failed, mark status as 'failed'
-                update_postgres_notification_status(notification_id, "failed")
+                update_notification_status(notification_id, "failed")
 
             # Delete the message from SQS after processing
             delete_message_from_sqs(message['ReceiptHandle'])

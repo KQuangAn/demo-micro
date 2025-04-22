@@ -15,6 +15,9 @@ import (
 
 var client *sqs.Client
 
+const MAX_NUMBER_OF_MESSAGE = 10
+const WAIT_TIME_SECONDS = 5
+
 func init() {
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {

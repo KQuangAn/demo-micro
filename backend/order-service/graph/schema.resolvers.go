@@ -12,76 +12,73 @@ import (
 	"orderservice/graph/model"
 	"orderservice/internal/eventbridge"
 	"orderservice/internal/models"
+	"orderservice/pkg/enums"
+	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	ebTypes "github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
+	pgx "github.com/jackc/pgx/v5"
 )
 
 // CreateOrder is the resolver for the createOrder field.
 func (r *mutationResolver) CreateOrder(ctx context.Context, productID string, quantity int32) (*model.Order, error) {
+	tx, err := r.DB.BeginTx(ctx, pgx.TxOptions{})
+
 	orderID := fmt.Sprintf("%d", time.Now().UnixNano())
 
 	order := model.Order{
 		ID:        orderID,
 		ProductID: productID,
 		Quantity:  quantity,
-		Status:    "Pending",
+		Status:    model.OrderStatusPending,
 	}
 
-	_, err := r.DB.Exec(ctx, `INSERT INTO orders (id, product_id, quantity, status, created_at) VALUES ($1, $2, $3, $4, $5)`,
+	_, err = tx.Exec(ctx, `INSERT INTO orders (id, product_id, quantity, status, created_at) VALUES ($1, $2, $3, $4, $5)`,
 		order.ID, order.ProductID, order.Quantity, order.Status)
 	if err != nil {
+		tx.Rollback(ctx)
 		return nil, fmt.Errorf("failed to create order: %v", err)
 	}
 
-	// 3. Push the order creation event to SQS
+	// emit order created event
 	detail := models.Order{
 		ID:        order.ID,
 		ProductID: order.ProductID,
 		Quantity:  order.Quantity,
-		Status:    order.Status,
+		Status:    model.OrderStatusPending.String(),
 	}
+
+	detailJSON, err := json.Marshal(detail)
+	if err != nil {
+		tx.Rollback(ctx)
+		log.Fatalf("failed to marshal order detail: %v", err)
+	}
+
 	orderCreatedEvent := ebTypes.PutEventsRequestEntry{
-		Source:       aws.String("qwefqef"),
-		DetailType:   aws.String("323423"),
-		Detail:       aws.String(string(detail)),
-		EventBusName: aws.String("qwefqef"),
+		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
+		DetailType:   aws.String(string(enums.EVENT_TYPE.OrderCreated)),
+		Detail:       aws.String(string(detailJSON)),
+		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
 	}
 
 	err = eventbridge.SendEvent(orderCreatedEvent)
 	if err != nil {
+		tx.Rollback(ctx)
 		return nil, fmt.Errorf("failed to send order event to SQS: %v", err)
 	}
 
-	// 4. Process the event asynchronously from SQS (handled by a separate worker)
-
-	// 5. Once the order is processed, send notification via EventBridge
-	notification := models.Notification{
-		ID:        "1",
-		Event:     "",
-		CreatedAt: order.Status,
-	}
-
-	eventDetail, err := json.Marshal(notification) // Assuming ev.Detail is already a struct or map
-	if err != nil {
-		log.Fatalf("failed to marshal event detail: %v", err)
-	}
-
-	notificationEvent := ebTypes.PutEventsRequestEntry{
-		Source:       aws.String("qwefqef"),
-		DetailType:   aws.String("323423"),
-		Detail:       aws.String(string(eventDetail)),
-		EventBusName: aws.String("qwefqef"),
-	}
-
-	err = eventbridge.SendEvent(notificationEvent)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send notification event to EventBridge: %v", err)
-	}
-
-	// Return the created order as the mutation result
 	return &order, nil
+}
+
+// UpdateOrder is the resolver for the updateOrder field.
+func (r *mutationResolver) UpdateOrder(ctx context.Context, id string, productID string, quantity int32) (*model.Order, error) {
+	panic(fmt.Errorf("not implemented: UpdateOrder - updateOrder"))
+}
+
+// CancelOrder is the resolver for the cancelOrder field.
+func (r *mutationResolver) CancelOrder(ctx context.Context, id string) (*model.Order, error) {
+	panic(fmt.Errorf("not implemented: CancelOrder - cancelOrder"))
 }
 
 // Orders is the resolver for the orders field.
@@ -132,18 +129,3 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: CreateTodo - createTodo"))
-}
-func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: Todos - todos"))
-}
-*/

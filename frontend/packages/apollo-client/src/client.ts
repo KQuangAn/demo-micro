@@ -1,5 +1,4 @@
-import { ApolloClient, InMemoryCache } from "@apollo/client";
-
+import { ApolloClient, InMemoryCache } from '@apollo/client';
 
 export const ordersClient = new ApolloClient({
   uri: process.env.NEXT_PUBLIC_ORDERS_ENDPOINT,
@@ -15,5 +14,3 @@ export const notificationClient = new ApolloClient({
   uri: process.env.NEXT_PUBLIC_NOTIFICATION_ENDPOINT,
   cache: new InMemoryCache(),
 });
-
-

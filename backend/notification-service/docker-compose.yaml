@@ -1,0 +1,37 @@
+version: '3.7'
+services:
+  localstack:
+    image: localstack/localstack:latest
+    environment:
+      - AWS_DEFAULT_REGION=ap-southest-1
+      - AWS_ACCESS_KEY_ID="test"
+      - AWS_SECRET_ACCESS_KEY="test"
+      - EDGE_PORT=4566
+      - SERVICES=sqs,rds,eventbridge,events
+    ports:
+      - '4566:4566'
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+  database:
+    image: mongo
+    container_name: your-cont-name
+    command: mongod --auth
+    environment:
+      - MONGO_INITDB_DATABASE=noti
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=root
+    ports:
+      - '27017-27019:27017-27019'
+    volumes:
+      - mongodbdata:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+  init-aws:
+    image: localstack/localstack:latest
+    depends_on:
+      - localstack
+    volumes:
+      - ./:/scripts
+    entrypoint: ['/scripts/init.sh']
+volumes:
+  mongodbdata:
+    driver: local

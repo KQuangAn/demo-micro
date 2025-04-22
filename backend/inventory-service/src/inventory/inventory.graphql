@@ -1,25 +1,38 @@
 type Inventory {
-  id: ID!
-  name: String!
+  id: String!
+  title: String!
+  brand: String!
   description: String!
+  images: [String!]!
+  categories: [String!]!
   quantity: Int!
   price: Float!
+  discount: Float!
+  createdAt: String!
   updatedAt: String!
 }
 
 input CreateInventoryInput {
-  name: String!
-  description: String!
+  title: String!
+  brand: String!
+  description: String
+  images: [String!]!
+  categories: [String!]!
   quantity: Int!
   price: Float!
+  discount: Float
 }
 
 input UpdateInventoryInput {
-  id: ID!
-  name: String
+  id: String!
+  title: String
+  brand: String
   description: String
+  images: [String!]
+  categories: [String!]
   quantity: Int
   price: Float
+  discount: Float
 }
 
 type Query {

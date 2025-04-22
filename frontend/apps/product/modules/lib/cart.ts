@@ -1,29 +1,39 @@
-export function writeLocalCart(items) {
-   window.localStorage.setItem('Cart', JSON.stringify(items))
+export function writeLocalCart(items: unknown) {
+  window.localStorage.setItem('Cart', JSON.stringify(items));
 }
 
 export function getLocalCart() {
-   if (typeof window !== 'undefined' && window.localStorage) {
-      try {
-         return JSON.parse(window.localStorage.getItem('Cart'))
-      } catch (error) {
-         writeLocalCart({ items: [] })
-         return { items: [] }
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const cart = window.localStorage.getItem('Cart');
+      if (cart == null) {
+        throw Error;
       }
-   }
+      return JSON.parse(cart);
+    } catch (error) {
+      writeLocalCart({ items: [] });
+      return { items: [] };
+    }
+  }
 }
 
-export function getCountInCart({ cartItems, productId }: { cartItems: unknown[], productId: string }) {
-   try {
-      for (let i = 0; i < cartItems.length; i++) {
-         if (cartItems[i]?.productId === productId) {
-            return cartItems[i]?.count
-         }
+export function getCountInCart({
+  cartItems,
+  productId,
+}: {
+  cartItems: unknown[];
+  productId: string;
+}) {
+  try {
+    for (let i = 0; i < cartItems?.length; i++) {
+      if (cartItems[i]?.productId === productId) {
+        return cartItems[i]?.count;
       }
+    }
 
-      return 0
-   } catch (error) {
-      console.error({ error })
-      return 0
-   }
+    return 0;
+  } catch (error) {
+    console.error({ error });
+    return 0;
+  }
 }

@@ -29,7 +29,9 @@ export class InventoryService {
   }
 
   async create(data: CreateInventoryInput): Promise<Inventory> {
-    const res = await this.prisma.inventory.create({ data });
+    const res = await this.prisma.inventory.create({
+      data: { ...data, updatedAt: Date.now().toString() },
+    });
     if (res) {
       await this.eb.emit(res, EventType.InventoryCreated);
     }
@@ -80,10 +82,8 @@ export class InventoryService {
     return res;
   }
 
-  async handleOrderCancelled(orderDetails: {
-    items: { productId: string; quantity: number }[];
-  }): Promise<void> {
-    for (const item of orderDetails.items) {
+  async handleOrderCancelled(messageDetail: TOrders[]): Promise<void> {
+    for (const item of messageDetail) {
       const { productId, quantity } = item;
 
       const inventoryItem = await this.prisma.inventory.findUnique({

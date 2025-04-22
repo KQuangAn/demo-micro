@@ -12,7 +12,7 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "../../ui/navigation-menu";
-import { config } from "../../../constant";
+import { defaultConfig } from "../../../constant";
 
 const components: { title: string; href: string; description: string }[] = [
   {
@@ -28,7 +28,7 @@ export function MainNav() {
     <div className="hidden md:flex gap-4">
       <Link href="/" className="flex items-center">
         <span className="hidden font-medium sm:inline-block">
-          {config?.name}
+          {defaultConfig?.name}
         </span>
       </Link>
       <NavMenu />

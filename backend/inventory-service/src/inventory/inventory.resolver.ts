@@ -1,4 +1,4 @@
-import { Resolver, Query, Mutation, Args } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args, ID } from '@nestjs/graphql';
 import { InventoryService } from './inventory.service';
 import { CreateInventoryInput } from './dto/create-inventory.input';
 import { UpdateInventoryInput } from './dto/update-inventory.input';
@@ -9,7 +9,7 @@ export class InventoryResolver {
   constructor(private inventoryService: InventoryService) {}
 
   @Query(() => Inventory)
-  async getInventory(@Args('id') id: string) {
+  async getInventory(@Args('id', { type: () => ID }) id: string) {
     return this.inventoryService.findOne(id);
   }
 

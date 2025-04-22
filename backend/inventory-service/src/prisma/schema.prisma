@@ -9,9 +9,14 @@ datasource db {
 
 model inventory {
   id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.VarChar(255)
-  name        String    @db.VarChar(255)
-  description String?
+  title       String    @db.VarChar(255)
+  brand       String    @db.VarChar(255)
+  description String
+  images      String[] 
+  categories  String[] 
   quantity    Int
   price       Float
-  updatedAt   DateTime? @default(now()) @db.Timestamp(6) @map("updated_at")
+  discount    Float
+  createdAt   DateTime  @default(now())  @map("created_at")
+  updatedAt   DateTime  @updatedAt       @map("updated_at")
 }

@@ -17,7 +17,7 @@ export class QueueService implements OnModuleInit, IQueueService {
 
   async pollMessages() {
     while (true) {
-      const response = await this.client.recieve();
+      const response: any = await this.client.recieve();
 
       for (const message of response?.Messages || []) {
         try {

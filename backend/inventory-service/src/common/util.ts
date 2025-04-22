@@ -1,5 +1,5 @@
 import { PutEventsRequestEntry } from '@aws-sdk/client-eventbridge';
-import { EventType } from './types';
+import { EventType, OrdersSchema, TOrders } from './types';
 
 export const createEvent = ({
   type,
@@ -16,4 +16,11 @@ export const createEvent = ({
       Detail: JSON.stringify(payload),
     },
   ];
+};
+
+export const isOrders = (detail: any): detail is TOrders[] => {
+  return (
+    Array.isArray(detail) &&
+    detail.every((order) => OrdersSchema.safeParse(order).success)
+  );
 };

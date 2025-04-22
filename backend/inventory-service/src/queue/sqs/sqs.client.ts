@@ -36,7 +36,7 @@ export class SqsClient implements IQueueClient {
   }
 
   async delete(...args: unknown[]): Promise<DeleteMessageCommandOutput> {
-    const entries = args.map((handle, index) => ({
+    const entries = args.map((handle: any, index) => ({
       Id: index.toString(),
       ReceiptHandle: handle?.ReceiptHandle,
     }));

@@ -2,15 +2,84 @@
 
 package model
 
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"strconv"
+)
+
 type Mutation struct {
 }
 
 type Order struct {
-	ID        string `json:"id"`
-	ProductID string `json:"productId"`
-	Quantity  int32  `json:"quantity"`
-	Status    string `json:"status"`
+	ID        string      `json:"id"`
+	UserID    string      `json:"userID"`
+	ProductID string      `json:"productId"`
+	Quantity  int32       `json:"quantity"`
+	Status    OrderStatus `json:"status"`
+	CreatedAt string      `json:"createdAt"`
+	UpdatedAt string      `json:"updatedAt"`
 }
 
 type Query struct {
+}
+
+type OrderStatus string
+
+const (
+	OrderStatusPending    OrderStatus = "PENDING"
+	OrderStatusProcessing OrderStatus = "PROCESSING"
+	OrderStatusCompleted  OrderStatus = "COMPLETED"
+	OrderStatusCancelled  OrderStatus = "CANCELLED"
+)
+
+var AllOrderStatus = []OrderStatus{
+	OrderStatusPending,
+	OrderStatusProcessing,
+	OrderStatusCompleted,
+	OrderStatusCancelled,
+}
+
+func (e OrderStatus) IsValid() bool {
+	switch e {
+	case OrderStatusPending, OrderStatusProcessing, OrderStatusCompleted, OrderStatusCancelled:
+		return true
+	}
+	return false
+}
+
+func (e OrderStatus) String() string {
+	return string(e)
+}
+
+func (e *OrderStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = OrderStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid OrderStatus", str)
+	}
+	return nil
+}
+
+func (e OrderStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *OrderStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e OrderStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }

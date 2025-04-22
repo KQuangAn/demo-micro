@@ -1,11 +1,13 @@
-import { ChevronRightIcon } from "lucide-react";
-import Link from "next/link";
-import { DataSection } from "../../../modules/product/data";
-import Carousel from "../../../modules/components/native/Carousel";
+import { ChevronRightIcon } from 'lucide-react';
+import Link from 'next/link';
+import { DataSection } from '../../../modules/product/data';
+import Carousel from '../../../modules/components/native/Carousel';
 import {
   GET_INVENTORY_ITEMS_BY_ID,
   inventoryClient,
-} from "@repo/apollo-client";
+  InventorySchema,
+} from '@repo/apollo-client';
+import { TInventory } from '@repo/apollo-client';
 
 type Props = {
   params: { productId: string };
@@ -37,18 +39,25 @@ export default async function Product({
 }: {
   params: { productId: string };
 }) {
+  const productId = await params.productId;
   const res = await inventoryClient.query({
     query: GET_INVENTORY_ITEMS_BY_ID,
     variables: {
-      id: params.productId,
+      id: productId,
     },
   });
-  if (res.error) {
+  
+  if (res?.error) {
     return <div>Error fetching data</div>;
   }
+  console.log(res, 12341234);
+  const product = res?.data?.getInventory;
 
-  const product = res.data;
+  const validated = InventorySchema.safeParse(product);
 
+  if (!validated.success) {
+    <>Data contains error</>;
+  }
   return (
     <>
       <Breadcrumbs product={product} />
@@ -60,7 +69,7 @@ export default async function Product({
   );
 }
 
-const ImageColumn = ({ product }) => {
+const ImageColumn = ({ product }: { product: TInventory }) => {
   return (
     <div className="relative min-h-[50vh] w-full col-span-1">
       <Carousel images={product?.images} />
@@ -68,7 +77,7 @@ const ImageColumn = ({ product }) => {
   );
 };
 
-const Breadcrumbs = ({ product }) => {
+const Breadcrumbs = ({ product }: { product: TInventory }) => {
   return (
     <nav className="flex text-muted-foreground" aria-label="Breadcrumb">
       <ol className="inline-flex items-center gap-2">

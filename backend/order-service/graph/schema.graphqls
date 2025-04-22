@@ -1,16 +1,27 @@
 type Order {
-	id: ID!
-	productId: ID!
-	quantity: Int!
-	status: String!
-  }
-  
-  type Query {
-	orders: [Order!]!
-	order(id: ID!): Order
-  }
-  
-  type Mutation {
-	createOrder(productId: ID!, quantity: Int!): Order!
-  }
-  
+  id: ID!
+  userID: ID!
+  productId: ID!
+  quantity: Int!
+  status: OrderStatus!
+  createdAt: String!
+  updatedAt: String!
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+type Query {
+  orders: [Order!]!
+  order(id: ID!): Order
+}
+
+type Mutation {
+  createOrder(productId: ID!, quantity: Int!): Order!
+  updateOrder(id: ID!, productId: ID!, quantity: Int!): Order!
+  cancelOrder(id: ID!): Order!
+}

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { IMessageHandler } from './message-handler.interface';
 import { InventoryService } from 'src/inventory/inventory.service';
 import { EventType, TQueueMessage } from 'src/common/types';
+import { isOrders } from 'src/common/util';
 
 @Injectable()
 export class InventoryMessageHandler implements IMessageHandler {
@@ -10,13 +11,21 @@ export class InventoryMessageHandler implements IMessageHandler {
   async process(message: TQueueMessage): Promise<unknown> {
     switch (message['detail-type']) {
       case EventType.OrdersCreated: {
-        return await this.inventoryService.handleOrderCreated(message.detail);
+        if (isOrders(message.detail)) {
+          return await this.inventoryService.handleOrderCreated(message.detail);
+        }
       }
       case EventType.OrdersCreated: {
-        return await this.inventoryService.handleOrderUpdated(message.detail);
+        if (isOrders(message.detail)) {
+          return await this.inventoryService.handleOrderUpdated(message.detail);
+        }
       }
       case EventType.OrdersCancelled: {
-        return await this.inventoryService.handleOrderCancelled(message.detail);
+        if (isOrders(message.detail)) {
+          return await this.inventoryService.handleOrderCancelled(
+            message.detail,
+          );
+        }
       }
       default: {
         return;

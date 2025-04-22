@@ -1,20 +1,24 @@
-import Carousel from "../modules/components/native/Carousel";
+import Carousel from '../modules/components/native/Carousel';
 import {
   ProductGrid,
   ProductSkeletonGrid,
-} from "../modules/components/native/Product";
-import { isVariableValid } from "../modules/lib/utils";
-import { Heading } from "../modules/components/native/heading";
-import { mockProducts } from "../modules/mock";
-import { banners } from "../modules/constant";
-import { getOrderBy } from "../modules/utils";
+} from '../modules/components/native/Product';
+import { isVariableValid } from '../modules/lib/utils';
+import { Heading } from '../modules/components/native/heading';
+import { mockProducts } from '../modules/mock';
+import { banners } from '../modules/constant';
+import { getOrderBy } from '../modules/utils';
 import {
   SortBy,
   CategoriesCombobox,
   AvailableToggle,
-} from "../modules/product/options";
-import { Separator } from "../modules/components/ui/separator";
-import { GET_ALL_INVENTORY, inventoryClient } from "@repo/apollo-client";
+} from '../modules/product/options';
+import { Separator } from '../modules/components/ui/separator';
+import {
+  GET_ALL_CATEGORY,
+  GET_ALL_INVENTORY,
+  inventoryClient,
+} from '@repo/apollo-client';
 
 export default async function Index({
   searchParams,
@@ -28,9 +32,21 @@ export default async function Index({
     category,
     page = 1,
   } = (await searchParams) ?? null;
-  const products = mockProducts;
-  const orderBy = getOrderBy(sort);
-  const categories = await inventoryClient.query({ query: GET_ALL_INVENTORY });
+
+  const [productsResult, categoriesResult] = await Promise.allSettled([
+    inventoryClient.query({ query: GET_ALL_INVENTORY }),
+    inventoryClient.query({ query: GET_ALL_CATEGORY }),
+  ]);
+  if (
+    productsResult?.status == 'rejected' ||
+    categoriesResult?.status == 'rejected'
+  ) {
+    return <>Error</>;
+  }
+
+  const products = productsResult.value.data?.allInventory;
+  const categories = categoriesResult.value.data?.allInventory;
+  console.log(products, categories);
 
   return (
     <div className="flex flex-col border-neutral-200 dark:border-neutral-700">

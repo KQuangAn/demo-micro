@@ -1,16 +1,15 @@
-"use client";
+'use client';
 
-import Link, { LinkProps } from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { cn } from "../../../lib/utils";
-import { Button } from "../../ui/button";
-import { SheetTrigger, SheetContent, Sheet } from "../../ui/sheet";
-import { docsConfig } from "../../composites/command";
-import { config } from "../../../constant";
-import { ViewIcon } from "lucide-react";
-import { ScrollArea } from "../../ui/scroll-area";
-
+import Link, { LinkProps } from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { cn } from '../../../lib/utils';
+import { Button } from '../../ui/button';
+import { SheetTrigger, SheetContent, Sheet } from '../../ui/sheet';
+import { docsConfig } from '../../composites/command';
+import { defaultConfig } from '../../../constant';
+import { ViewIcon } from 'lucide-react';
+import { ScrollArea } from '../../ui/scroll-area';
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
@@ -45,7 +44,7 @@ export function MobileNav() {
             >
               <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
             </svg>
-            {config?.name}
+            {defaultConfig?.name}
           </div>
         </MobileLink>
         <ScrollArea className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">

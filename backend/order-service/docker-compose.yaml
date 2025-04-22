@@ -7,7 +7,7 @@ services:
       - AWS_ACCESS_KEY_ID="test"
       - AWS_SECRET_ACCESS_KEY="test"
       - EDGE_PORT=4566
-      - SERVICES=s3,sqs
+      - SERVICES=s3,sqs,rds
     ports:
       - '4566:4566'
     volumes:

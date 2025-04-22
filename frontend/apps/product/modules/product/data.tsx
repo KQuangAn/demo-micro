@@ -1,8 +1,8 @@
-import Link from "next/link";
+import Link from 'next/link';
 
-import CartButton from "./cart_button";
-import { Separator } from "../components/ui/separator";
-import { Badge } from "../components/ui/badge";
+import CartButton from './cart_button';
+import { Separator } from '../components/ui/separator';
+import { Badge } from '../components/ui/badge';
 
 export const DataSection = async ({ product }: { product: unknown }) => {
   function Price() {
@@ -29,15 +29,15 @@ export const DataSection = async ({ product }: { product: unknown }) => {
       <Separator />
       <div className="flex gap-2 mb-2 items-center">
         <p className="text-sm">Brand:</p>
-        <Link href={`/products?brand=${product?.brand?.title}`}>
-          <Badge variant="outline">{product?.brand?.title}</Badge>
+        <Link href={`/products?brand=${product?.brand}`}>
+          <Badge variant="outline">{product?.brand}</Badge>
         </Link>
       </div>
       <div className="flex gap-2 items-center">
         <p className="text-sm">Categories:</p>
-        {product?.categories?.map(({ title }, index) => (
-          <Link key={index} href={`/products?categories=${title}`}>
-            <Badge variant="outline">{title}</Badge>
+        {product?.categories?.map((category, index) => (
+          <Link key={index} href={`/products?categories=${category}`}>
+            <Badge variant="outline">{category}</Badge>
           </Link>
         ))}
       </div>
@@ -49,6 +49,8 @@ export const DataSection = async ({ product }: { product: unknown }) => {
         <Price />
         <div className="flex gap-2">
           <CartButton product={product} />
+
+          <Badge variant="default">{product?.quantity} available</Badge>
         </div>
       </div>
     </div>

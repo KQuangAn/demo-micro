@@ -21,6 +21,7 @@ import { MessageHandlerModule } from './queue/message-handler/message-handler.mo
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      csrfPrevention: false, // temp
     }),
     AuthModule,
     EventEmitterModule,

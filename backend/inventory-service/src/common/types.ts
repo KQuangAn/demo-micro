@@ -29,7 +29,7 @@ export type TOrders = z.infer<typeof OrdersSchema>;
 
 export const QueueMessage = z.object({
   'detail-type': z.nativeEnum(EventType),
-  detail: InventorySchema || OrdersSchema,
+  detail: z.array(InventorySchema).or(z.array(OrdersSchema)),
 });
 
 export type TQueueMessage = z.infer<typeof QueueMessage>;

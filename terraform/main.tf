@@ -371,7 +371,7 @@ module "eventbridge" {
       {
         name              = "send-to-notification-sqs"
         input_transformer = local.order_input_transformer
-        arn               = aws_sqs_queue.notification_queue.arn
+        arn               = module.notification-service.notification_queue_arn
         message_group_id  = "order-created-group"
       }
     ]
@@ -394,10 +394,6 @@ locals {
   }
 }
 
-resource "aws_cloudwatch_eventbus" "evbus" {
+resource "aws_cloudwatch_event_bus" "evbus" {
   name = "evbus"
-}
-
-output "event_bus_arn" {
-  value = aws_cloudwatch_eventbus.evbus.arn
 }

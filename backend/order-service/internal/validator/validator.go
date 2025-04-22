@@ -24,7 +24,9 @@ func (v *Validator) Validate(msgBody string, model interface{}) bool {
 
 	err = v.validate.Struct(model)
 	if err != nil {
-		log.Printf("Message validation failed: %v", err)
+		for _, e := range err.(validator.ValidationErrors) {
+			log.Printf("Validation failed for field '%s': %s", e.Field(), e.Tag())
+		}
 		return false
 	}
 

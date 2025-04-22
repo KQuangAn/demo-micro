@@ -66,12 +66,10 @@ data "aws_iam_policy_document" "notification_queue_policy" {
   }
 }
 
-
 resource "aws_sqs_queue_policy" "notification_queue_policy" {
   queue_url = aws_sqs_queue.notification_queue.id
   policy    = data.aws_iam_policy_document.notification_queue_policy.json
 }
-
 
 resource "aws_sqs_queue_policy" "orders_sqs_policy" {
   queue_url = aws_sqs_queue.orders_queue.id
@@ -85,6 +83,7 @@ module "eventbridge" {
   bus_name = "evbus"
 
   rules = {
+    //to notificaiton
     order_created = {
       description = "Capture OrderCreated events"
       event_pattern = jsonencode({
@@ -93,15 +92,33 @@ module "eventbridge" {
       })
       enabled = true
     }
+
+    //to orders
+    inventory_saved_success = {
+      description = "Capture inventory_saved_success events"
+      event_pattern = jsonencode({
+        "source" : ["com.inventory"],
+        "detail-type" : ["inventory.confirmed"]
+      })
+      enabled = true
+    }
   }
 
   targets = {
     order_created = [
       {
-        name              = "send-to-notification-sqs"
-        input_transformer = local.order_input_transformer
-        arn               = aws_sqs_queue.notification_queue.arn
-        message_group_id  = "order-created-group"
+        name = "send-to-notification-sqs"
+        # input_transformer = local.order_input_transformer
+        arn              = aws_sqs_queue.notification_queue.arn
+        message_group_id = "mgs"
+      }
+    ],
+    inventory_saved_success = [
+      {
+        name = "send-to-orders-sqs"
+        # input_transformer = local.order_input_transformer
+        arn              = aws_sqs_queue.orders_queue.arn
+        message_group_id = "msg"
       }
     ]
   }
@@ -110,7 +127,6 @@ module "eventbridge" {
     Name = "evbus"
   }
 }
-
 
 locals {
   order_input_transformer = {
@@ -125,11 +141,10 @@ locals {
   }
 }
 
-
 resource "aws_sqs_queue" "notification_queue" {
   name                        = "notification-queue.fifo"
-  delay_seconds               = 0  # delay before consumer can access
-  visibility_timeout_seconds  = 30 # prevents multiple consumers from processing the same message
+  delay_seconds               = 0
+  visibility_timeout_seconds  = 30
   max_message_size            = 2048
   message_retention_seconds   = 86400
   receive_wait_time_seconds   = 5
@@ -138,70 +153,134 @@ resource "aws_sqs_queue" "notification_queue" {
   content_based_deduplication = true
 }
 
+# Create a new VPC
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16"
 
+  enable_dns_support   = true
+  enable_dns_hostnames = true
 
+  tags = {
+    Name = "my-vpc"
+  }
+}
+
+# Create a new Internet Gateway
+resource "aws_internet_gateway" "gw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "my-internet-gateway"
+  }
+}
+
+# Create a public subnet in multiple AZs
+resource "aws_subnet" "public_subnet_a" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "ap-southeast-1a"
+  map_public_ip_on_launch = true
+  tags = {
+    Name = "Public Subnet A"
+  }
+}
+
+resource "aws_subnet" "public_subnet_b" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.2.0/24"
+  availability_zone       = "ap-southeast-1b"
+  map_public_ip_on_launch = true
+  tags = {
+    Name = "Public Subnet B"
+  }
+}
+
+# Create a route table for the public subnet
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.gw.id
+  }
+
+  tags = {
+    Name = "public-route-table"
+  }
+}
+
+# Associate subnets to route table
+resource "aws_route_table_association" "a" {
+  subnet_id      = aws_subnet.public_subnet_a.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "b" {
+  subnet_id      = aws_subnet.public_subnet_b.id
+  route_table_id = aws_route_table.public.id
+}
+
+# Create a security group for PostgreSQL RDS
+resource "aws_security_group" "postgres_sg" {
+  name        = "postgres-sg"
+  description = "Allow all IPv4 inbound traffic to PostgreSQL (port 5432)"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # Allow all IPv4 addresses to connect
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"] # Allow all outbound traffic
+  }
+
+  tags = {
+    Name = "postgres-sg"
+  }
+}
+
+# Create a DB subnet group for RDS
+resource "aws_db_subnet_group" "postgres_subnet_group" {
+  name = "postgres-subnet-group"
+  subnet_ids = [
+    aws_subnet.public_subnet_a.id,
+    aws_subnet.public_subnet_b.id
+  ]
+
+  tags = {
+    Name = "postgres-subnet-group"
+  }
+}
 
 resource "aws_db_instance" "postgres" {
-  identifier          = "orders-db"
-  engine              = "postgres"
-  engine_version      = "17"
-  instance_class      = "db.t4g.micro"
-  allocated_storage   = 20
-  username            = var.orders_db_username
-  password            = var.orders_db_password
-  db_name             = var.orders_db_name
-  skip_final_snapshot = true
-  publicly_accessible = true
+  identifier             = "orders-db"
+  engine                 = "postgres"
+  engine_version         = "17"
+  instance_class         = "db.t4g.micro"
+  allocated_storage      = 20
+  username               = var.orders_db_username
+  password               = var.orders_db_password
+  db_name                = var.orders_db_name
+  skip_final_snapshot    = true
+  publicly_accessible    = true
+  vpc_security_group_ids = [aws_security_group.postgres_sg.id]
+  db_subnet_group_name   = aws_db_subnet_group.postgres_subnet_group.name
 
   tags = {
     Name = "orders_db"
   }
 }
 
-resource "aws_lambda_function" "init_orders_lambda" {
-  filename         = "../lambda/lambda.zip"
-  function_name    = "init-orders-db"
-  handler          = "handler.lambda_handler"
-  runtime          = "python3.9"
-  role             = aws_iam_role.lambda_exec.arn
-  source_code_hash = filebase64sha256("../lambda/lambda.zip")
-
-  environment {
-    variables = {
-      DB_HOST     = aws_db_instance.postgres.address
-      DB_NAME     = var.orders_db_name
-      DB_USER     = var.orders_db_username
-      DB_PASSWORD = var.orders_db_password
-    }
-  }
+output "vpc_id" {
+  value = aws_vpc.main.id
 }
 
-resource "aws_iam_role" "lambda_exec" {
-  name = "lambda_exec_role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "lambda.amazonaws.com"
-        }
-      },
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_logs" {
-  role       = aws_iam_role.lambda_exec.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-resource "null_resource" "init_orders_lambda" {
-  depends_on = [aws_lambda_function.init_orders_lambda]
-
-  provisioner "local-exec" {
-    command = "aws lambda invoke --function-name init-orders-db out.json"
-  }
+output "rds_endpoint" {
+  value = aws_db_instance.postgres.endpoint
 }

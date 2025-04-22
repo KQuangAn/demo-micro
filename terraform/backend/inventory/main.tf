@@ -7,13 +7,6 @@ terraform {
   }
 }
 
-provider "aws" {
-  region                   = "ap-southeast-1"
-  shared_config_files      = ["~/.aws/config"]
-  shared_credentials_files = ["~/.aws/credentials"]
-  profile                  = "default"
-}
-
 resource "aws_sqs_queue" "inventory_queue" {
   name                        = "inventory-queue.fifo"
   delay_seconds               = 0

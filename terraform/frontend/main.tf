@@ -1,7 +1,3 @@
-provider "aws" {
-  region = "ap-southeast-1"
-}
-
 resource "aws_amplify_app" "my_amplify_app" {
   name        = "my-amplify-app"
   repository  = "https://github.com/your-username/your-repo" 

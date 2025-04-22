@@ -2,7 +2,6 @@ package sqs
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"orderservice/internal/models"
 	"orderservice/internal/validator"
@@ -55,16 +54,10 @@ func receiveMessages(ctx context.Context, queueURL string) *sqs.ReceiveMessageOu
 }
 
 func processMessage(msg types.Message, msgValidator *validator.Validator, callback func(message string), queueURL string) {
-	var order models.Order
+	var event models.EventBridgeMessage
 	log.Printf("Received message: %s", *msg.Body)
 
-	if err := json.Unmarshal([]byte(*msg.Body), &order); err != nil {
-		log.Printf("Invalid JSON format: %v", err)
-		deleteMessage(queueURL, *msg.ReceiptHandle)
-		return
-	}
-
-	valid := msgValidator.Validate(*msg.Body, &order)
+	valid := msgValidator.Validate(*msg.Body, &event)
 
 	if valid {
 		callback(*msg.Body)

@@ -1,3 +1,7 @@
+variable "github_repo" {
+  type      = string
+  sensitive = true
+}
 variable "orders_service_url" {
   type      = string
   sensitive = true

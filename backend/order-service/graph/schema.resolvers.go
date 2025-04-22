@@ -24,7 +24,9 @@ import (
 // CreateOrder is the resolver for the createOrder field.
 func (r *mutationResolver) CreateOrder(ctx context.Context, productID string, quantity int32) (*model.Order, error) {
 	tx, err := r.DB.BeginTx(ctx, pgx.TxOptions{})
-
+	if err != nil {
+		return nil, fmt.Errorf("failed to create order: %v", err)
+	}
 	orderID := fmt.Sprintf("%d", time.Now().UnixNano())
 
 	order := model.Order{

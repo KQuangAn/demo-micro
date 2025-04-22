@@ -12,20 +12,16 @@ services:
       - '4566:4566'
     volumes:
       - '/var/run/docker.sock:/var/run/docker.sock'
-  database:
-    image: mongo
-    container_name: your-cont-name
-    command: mongod --auth
+  db:
+    image: postgres:latest
     environment:
-      - MONGO_INITDB_DATABASE=noti
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=root
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mydatabase
     ports:
-      - '27017-27019:27017-27019'
+      - '5432:5432'
     volumes:
-      - mongodbdata:/data/db
-      - ./init-mongo.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-
+      - postgres_data:/var/lib/postgresql/data
 volumes:
-  mongodbdata:
-    driver: local
+  postgres_data:
+

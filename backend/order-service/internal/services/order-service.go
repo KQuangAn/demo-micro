@@ -75,7 +75,6 @@ func (s *OrderService) CreateOrder(ctx context.Context, userId string, productID
 	if err != nil {
 		return nil, fmt.Errorf("failed to create order: %v", err)
 	}
-	fmt.Println("inqwherqwer")
 
 	// Emit order created event
 	detailJSON, err := json.Marshal(order)
@@ -137,7 +136,7 @@ func (s *OrderService) UpdateOrder(ctx context.Context, id string, productID str
 
 	OrderPlacedEvent := ebTypes.PutEventsRequestEntry{
 		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
-		DetailType:   aws.String(string(enums.EVENT_TYPE.OrderPlaced)),
+		DetailType:   aws.String(string(enums.EVENT_TYPE.OrderUpdated)),
 		Detail:       aws.String(string(detailJSON)),
 		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
 	}
@@ -190,7 +189,7 @@ func (s *OrderService) CancelOrder(ctx context.Context, id string) (*model.Order
 
 	orderUpdatedEvent := ebTypes.PutEventsRequestEntry{
 		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
-		DetailType:   aws.String(string(enums.EVENT_TYPE.OrderProcessed)), // Use appropriate event type
+		DetailType:   aws.String(string(enums.EVENT_TYPE.OrderCancelled)), // Use appropriate event type
 		Detail:       aws.String(string(detailJSON)),
 		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
 	}

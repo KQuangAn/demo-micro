@@ -11,6 +11,7 @@ import { getEnv } from 'config';
 import { EventEmitterModule } from './event-emitter/event-emitter.module';
 import { ApolloClientModule } from './apollo-client/apollo-client.module';
 import { MessageHandlerModule } from './queue/message-handler/message-handler.module';
+import { DateScalar } from './graphql/date.scalar';
 
 @Module({
   imports: [
@@ -22,6 +23,9 @@ import { MessageHandlerModule } from './queue/message-handler/message-handler.mo
       driver: ApolloDriver,
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       csrfPrevention: false, // temp
+      resolvers: {
+        Date: DateScalar, // Register the Date scalar type
+      },
     }),
     AuthModule,
     EventEmitterModule,

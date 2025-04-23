@@ -12,9 +12,12 @@ type Inventory {
   quantity: Int!
   price: Float!
   discount: Float
-  createdAt: String!
-  updatedAt: String!
+  createdAt: Date!
+  updatedAt: Date!
 }
+
+"""Custom Date scalar type"""
+scalar Date
 
 type Query {
   getInventory(id: ID!): Inventory!
@@ -30,12 +33,12 @@ type Mutation {
 input CreateInventoryInput {
   title: String!
   brand: String!
-  description: String
+  description: String!
   images: [String!]!
   categories: [String!]!
   quantity: Float!
   price: Float!
-  discount: Float
+  discount: Float!
 }
 
 input UpdateInventoryInput {

@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitterService } from 'src/event-emitter/event-emitter.service';
 import { EventType, TOrders } from 'src/common/types';
 import { ApolloClient, gql } from '@apollo/client/core';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class InventoryService {
@@ -12,7 +13,7 @@ export class InventoryService {
     private prisma: PrismaService,
     private eb: EventEmitterService,
     @Inject('APOLLO_CLIENT') private readonly client: ApolloClient<any>,
-  ) {}
+  ) { }
 
   async findAll(): Promise<Inventory[]> {
     return this.prisma.inventory.findMany();
@@ -29,14 +30,23 @@ export class InventoryService {
   }
 
   async create(data: CreateInventoryInput): Promise<Inventory> {
-    const res = await this.prisma.inventory.create({
-      data: { ...data, updatedAt: Date.now().toString() },
+    const validatedData = Prisma.validator<Prisma.inventoryCreateInput>()(data);
+
+    return await this.prisma.$transaction(async (tx) => {
+      const res = await tx.inventory.create({
+        data: { ...validatedData, updatedAt: new Date() },
+      });
+
+      try {
+        await this.eb.emit(res, EventType.InventoryCreated);
+      } catch (err) {
+        throw new Error(`Failed to emit event: ${err.message}`);
+      }
+
+      return res;
     });
-    if (res) {
-      await this.eb.emit(res, EventType.InventoryCreated);
-    }
-    return res;
   }
+
 
   async update(
     id: string,
@@ -47,141 +57,162 @@ export class InventoryService {
       price?: number;
     },
   ): Promise<Inventory> {
-    const inventory = await this.prisma.inventory.findUnique({
-      where: { id },
-    });
-    if (!inventory) {
-      throw new NotFoundException(`Inventory item with id ${id} not found`);
-    }
+    return await this.prisma.$transaction(async (tx) => {
+      const inventory = await tx.inventory.findUnique({
+        where: { id },
+      });
+      if (!inventory) {
+        throw new NotFoundException(`Inventory item with id ${id} not found`);
+      }
 
-    const res = await this.prisma.inventory.update({
-      where: { id },
-      data,
-    });
+      const res = await tx.inventory.update({
+        where: { id },
+        data,
+      });
 
-    if (res) {
-      await this.eb.emit(res, EventType.InventoryUpdated);
-    }
-    return res;
+      await this.eb.emit(res, EventType.InventoryUpdated).catch((err) => {
+        throw new Error(`Failed to emit event: ${err.message}`);
+      });
+
+      return res;
+    });
   }
 
   async remove(id: string): Promise<Inventory> {
-    const inventory = await this.prisma.inventory.findUnique({
-      where: { id },
-    });
-    if (!inventory) {
-      throw new NotFoundException(`Inventory item with id ${id} not found`);
-    }
-    const res = await this.prisma.inventory.delete({
-      where: { id },
-    });
+    return await this.prisma.$transaction(async (tx) => {
+      const inventory = await tx.inventory.findUnique({
+        where: { id },
+      });
+      if (!inventory) {
+        throw new NotFoundException(`Inventory item with id ${id} not found`);
+      }
 
-    if (res) {
-      await this.eb.emit(res, EventType.InventoryDeleted);
-    }
-    return res;
+      const res = await tx.inventory.delete({
+        where: { id },
+      });
+
+      await this.eb.emit(res, EventType.InventoryDeleted).catch((err) => {
+        throw new Error(`Failed to emit event: ${err.message}`);
+      });
+
+      return res;
+    });
   }
 
   async handleOrderCancelled(messageDetail: TOrders[]): Promise<void> {
-    for (const item of messageDetail) {
-      const { productId, quantity } = item;
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of messageDetail) {
+        const { productId, quantity } = item;
 
-      const inventoryItem = await this.prisma.inventory.findUnique({
-        where: { id: productId },
-      });
+        const inventoryItem = await tx.inventory.findUnique({
+          where: { id: productId },
+        });
 
-      if (!inventoryItem) {
-        throw new NotFoundException(
-          `Inventory item with id ${productId} not found`,
-        );
+        if (!inventoryItem) {
+          throw new NotFoundException(
+            `Inventory item with id ${productId} not found`,
+          );
+        }
+
+        const updatedQuantity = inventoryItem.quantity + quantity;
+        await tx.inventory.update({
+          where: { id: productId },
+          data: { quantity: updatedQuantity },
+        });
       }
+    });
 
-      const updatedQuantity = inventoryItem.quantity + quantity;
-      await this.prisma.inventory.update({
-        where: { id: productId },
-        data: { quantity: updatedQuantity },
-      });
-
+    for (const item of messageDetail) {
       await this.eb.emit(
-        { productId, quantity: updatedQuantity },
+        { productId: item.productId, quantity: item.quantity },
         EventType.InventoryUpdated,
       );
     }
   }
 
+
   async handleOrderUpdated(messageDetail: TOrders[]): Promise<void> {
-    for (const item of messageDetail) {
-      const { id: ordersId, productId, quantity } = item;
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of messageDetail) {
+        const { id: ordersId, productId, quantity } = item;
 
-      // Find the inventory item
-      const inventoryItem = await this.prisma.inventory.findUnique({
-        where: { id: productId },
-      });
+        const inventoryItem = await tx.inventory.findUnique({
+          where: { id: productId },
+        });
 
-      if (!inventoryItem) {
-        throw new NotFoundException(
-          `Inventory item with id ${productId} not found`,
-        );
-      }
-      const query = gql`
-        query {
-          order(id: $id) {
-            id
-            productId
-            quantity
-            status
-          }
+        if (!inventoryItem) {
+          throw new NotFoundException(
+            `Inventory item with id ${productId} not found`,
+          );
         }
-      `;
 
-      //get prev order
-      const response = await this.client.query({
-        query,
-        variables: { id: ordersId },
-      });
+        const query = gql`
+          query GetOrder($id: String!) {
+            order(id: $id) {
+              id
+              productId
+              quantity
+              status
+            }
+          }
+        `;
 
-      // Update the inventory quantity
-      const updatedQuantity =
-        inventoryItem.quantity + (quantity - response.data.order.quantity);
+        const response = await this.client.query({
+          query,
+          variables: { id: ordersId },
+        });
 
-      //update inventory
-      await this.prisma.inventory.update({
-        where: { id: productId },
-        data: { quantity: updatedQuantity },
-      });
+        const updatedQuantity =
+          inventoryItem.quantity + (quantity - response.data.order.quantity);
 
-      // Optionally emit an event that inventory has been updated
+        await tx.inventory.update({
+          where: { id: productId },
+          data: { quantity: updatedQuantity },
+        });
+      }
+    });
+
+    for (const item of messageDetail) {
       await this.eb.emit(
-        { productId, quantity: updatedQuantity },
+        { productId: item.productId, quantity: item.quantity },
         EventType.InventoryUpdated,
       );
     }
   }
 
   async handleOrderCreated(messageDetail: TOrders[]): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of messageDetail) {
+        const { productId, quantity } = item;
+
+        const inventoryItem = await tx.inventory.findUnique({
+          where: { id: productId },
+        });
+
+        if (!inventoryItem) {
+          throw new NotFoundException(
+            `Inventory item with id ${productId} not found`,
+          );
+        }
+
+        const updatedQuantity = inventoryItem.quantity - quantity;
+        await tx.inventory.update({
+          where: { id: productId },
+          data: { quantity: updatedQuantity },
+        });
+      }
+    });
+
     for (const item of messageDetail) {
       const { productId, quantity } = item;
-
-      const inventoryItem = await this.prisma.inventory.findUnique({
-        where: { id: productId },
-      });
-
-      if (!inventoryItem) {
-        throw new NotFoundException(
-          `Inventory item with id ${productId} not found`,
-        );
-      }
-
-      const updatedQuantity = inventoryItem.quantity - quantity;
-      await this.prisma.inventory.update({
-        where: { id: productId },
-        data: { quantity: updatedQuantity },
-      });
-
       await this.eb.emit(
-        { productId, quantity: updatedQuantity },
-        EventType.InventoryUpdated,
-      );
+        { productId, quantity },
+        EventType.InventoryReserved,
+      ).catch(async () => {
+        await this.eb.emit(messageDetail, EventType.InventoryReservationFailed);
+        throw new Error('Failed to emit InventoryReserved event');
+      });
     }
   }
+
 }

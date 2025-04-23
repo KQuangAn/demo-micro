@@ -37,16 +37,33 @@ func graphqlHandler(orderService *services.OrderService) http.HandlerFunc {
 	}
 }
 
-func main() {
-	rootEnvPath, err := filepath.Abs("../../.env")
-	if err != nil {
-		log.Fatalf("Error getting absolute path: %v", err)
+func loadEnvFile() {
+	envPaths := []string{"./.env", "../../.env"}
+	var rootEnvPath string
+	var err error
+
+	for _, path := range envPaths {
+		rootEnvPath, err = filepath.Abs(path)
+		if err != nil {
+			log.Printf("Error getting absolute path for %s: %v", path, err)
+			continue
+		}
+
+		err = godotenv.Load(rootEnvPath)
+		if err == nil {
+			log.Printf("Successfully loaded .env file from: %s", rootEnvPath)
+			return
+		} else {
+			log.Printf("Error loading .env file from %s: %v", rootEnvPath, err)
+		}
 	}
 
-	err = godotenv.Load(rootEnvPath)
-	if err != nil {
-		log.Fatalf("Error loading .env file from root: %v", err)
-	}
+	log.Printf("Failed to load .env file from any of the specified paths")
+}
+
+func main() {
+	//try load local env
+	loadEnvFile()
 
 	region := os.Getenv("AWS_REGION")
 	if region == "" {
@@ -58,7 +75,7 @@ func main() {
 		log.Fatal("ORDERS_QUEUE_URL environment variable is not set")
 	}
 
-	_, err = config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
+	_, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
 	if err != nil {
 		log.Fatalf("unable to load SDK config, %v", err)
 	}

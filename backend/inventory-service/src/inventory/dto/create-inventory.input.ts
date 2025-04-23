@@ -8,8 +8,8 @@ export class CreateInventoryInput {
   @Field()
   brand: string;
 
-  @Field({ nullable: true })
-  description?: string;
+  @Field()
+  description: string;
 
   @Field(() => [String])
   images: string[];
@@ -23,6 +23,6 @@ export class CreateInventoryInput {
   @Field()
   price: number;
 
-  @Field({ nullable: true })
-  discount?: number;
+  @Field()
+  discount: number;
 }

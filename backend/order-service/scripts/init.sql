@@ -3,7 +3,7 @@
 -- Create the orders table with UUIDs
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";  -- Enable the UUID extension
 
-CREATE TYPE order_status AS ENUM ('PENDING', 'PROCESSING', 'COMPLETED', 'CANCELLED');
+CREATE TYPE order_status AS ENUM ('Pending', 'Processing', 'Completed', 'Cancelled');
 
 
 CREATE TABLE orders (

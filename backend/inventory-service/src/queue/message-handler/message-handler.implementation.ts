@@ -6,21 +6,21 @@ import { isOrders } from 'src/common/util';
 
 @Injectable()
 export class InventoryMessageHandler implements IMessageHandler {
-  constructor(private readonly inventoryService: InventoryService) {}
+  constructor(private readonly inventoryService: InventoryService) { }
 
   async process(message: TQueueMessage): Promise<unknown> {
     switch (message['detail-type']) {
-      case EventType.OrdersCreated: {
+      case EventType.OrderPlaced: {
         if (isOrders(message.detail)) {
           return await this.inventoryService.handleOrderCreated(message.detail);
         }
       }
-      case EventType.OrdersCreated: {
+      case EventType.OrderUpdated: {
         if (isOrders(message.detail)) {
           return await this.inventoryService.handleOrderUpdated(message.detail);
         }
       }
-      case EventType.OrdersCancelled: {
+      case EventType.OrderCancelled: {
         if (isOrders(message.detail)) {
           return await this.inventoryService.handleOrderCancelled(
             message.detail,

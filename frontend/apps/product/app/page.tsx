@@ -45,8 +45,8 @@ export default async function Index({
     return <>Error</>;
   }
 
-  const products = productsResult.value.data?.allInventory;
-  const categories = categoriesResult.value.data?.allInventory;
+  const products = productsResult?.value?.data?.allInventory;
+  const categories = categoriesResult?.value?.data?.allInventory;
   console.log(products, categories);
 
   return (

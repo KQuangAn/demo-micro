@@ -1,12 +1,17 @@
 import z from 'zod';
 
 export enum EventType {
-  OrdersCreated = 'orders.created',
-  OrdersUpdate = 'orders.updated',
-  OrdersCancelled = 'orders.cancelled',
-  InventoryCreated = 'inventory.created',
-  InventoryUpdated = 'inventory.updated',
-  InventoryDeleted = 'inventory.deleted',
+  OrderPlaced = 'order_placed',
+  OrderUpdated = 'order_updated',
+  OrderCancelled = 'order_cancelled',
+  OrderProcessed = 'order_processed',
+  InventoryCreated = 'inventory_created',
+  InventoryUpdated = 'inventory_updated',
+  InventoryDeleted = 'inventory_delete',
+  InventoryReserved = 'inventory_reserved',
+  InventoryReservationFailed = 'inventory_reservation_failed',
+  NotificationSentSuccess = 'notification_sent_success',
+  NotificationSentFailed = 'notification_sent_failed',
 }
 
 export const InventorySchema = z.object({

@@ -16,10 +16,13 @@ export class EventBridge implements IEventEmitter {
       region: this.config?.get('AWS_REGION'),
     });
   }
-  async emit(event: PutEventsRequestEntry[]) {
+  async emit(event: PutEventsRequestEntry[] | PutEventsRequestEntry) {
+    const entries = Array.isArray(event) ? event : [event];
+
     const command = new PutEventsCommand({
-      Entries: event,
+      Entries: entries,
     });
+
     await this.client.send(command);
   }
 }

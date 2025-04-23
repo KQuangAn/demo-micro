@@ -1,4 +1,5 @@
 import { ObjectType, Field, ID, Int, Float } from '@nestjs/graphql';
+import { DateScalar } from 'src/graphql/date.scalar';
 
 @ObjectType()
 export class Inventory {
@@ -29,9 +30,9 @@ export class Inventory {
   @Field(() => Float, { nullable: true })
   discount?: number;
 
-  @Field()
-  createdAt: string;
+  @Field(() => DateScalar)
+  createdAt: Date;
 
-  @Field()
-  updatedAt: string;
+  @Field(() => DateScalar)
+  updatedAt: Date;
 }

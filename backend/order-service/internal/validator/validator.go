@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -15,8 +16,8 @@ func New() *Validator {
 	return &Validator{validate: validator.New()}
 }
 
-func (v *Validator) Validate(msgBody string, model interface{}) bool {
-	err := json.Unmarshal([]byte(msgBody), model)
+func (v *Validator) Validate(msgBody *types.Message, model interface{}) bool {
+	err := json.Unmarshal([]byte(*msgBody.Body), model)
 	if err != nil {
 		log.Printf("Invalid JSON format: %v", err)
 		return false

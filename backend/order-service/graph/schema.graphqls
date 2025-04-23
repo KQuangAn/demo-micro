@@ -21,7 +21,7 @@ type Query {
 }
 
 type Mutation {
-  createOrder(productId: ID!, quantity: Int!): Order!
-  updateOrder(id: ID!, productId: ID!, quantity: Int!): Order!
+  createOrder(userID: ID! , productId: ID!, quantity: Int!): Order!
+  updateOrder(id: ID!, productId: ID!, quantity: Int!,status: OrderStatus!): Order!
   cancelOrder(id: ID!): Order!
 }

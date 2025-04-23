@@ -6,215 +6,32 @@ package graph
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"log"
 	"orderservice/graph/model"
-	"orderservice/internal/eventbridge"
-	"orderservice/internal/models"
-	"orderservice/pkg/enums"
-	"os"
-	"time"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	ebTypes "github.com/aws/aws-sdk-go-v2/service/eventbridge/types"
-	pgx "github.com/jackc/pgx/v5"
 )
 
 // CreateOrder is the resolver for the createOrder field.
-func (r *mutationResolver) CreateOrder(ctx context.Context, productID string, quantity int32) (*model.Order, error) {
-	tx, err := r.DB.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create order: %v", err)
-	}
-	orderID := fmt.Sprintf("%d", time.Now().UnixNano())
-
-	order := model.Order{
-		ID:        orderID,
-		ProductID: productID,
-		Quantity:  quantity,
-		Status:    model.OrderStatusPending,
-	}
-
-	_, err = tx.Exec(ctx, `INSERT INTO orders (id, product_id, quantity, status, created_at) VALUES ($1, $2, $3, $4, $5)`,
-		order.ID, order.ProductID, order.Quantity, order.Status)
-	if err != nil {
-		tx.Rollback(ctx)
-		return nil, fmt.Errorf("failed to create order: %v", err)
-	}
-
-	// emit order created event
-	detail := models.Order{
-		ID:        order.ID,
-		ProductID: order.ProductID,
-		Quantity:  order.Quantity,
-		Status:    model.OrderStatusPending.String(),
-	}
-
-	detailJSON, err := json.Marshal(detail)
-	if err != nil {
-		tx.Rollback(ctx)
-		log.Fatalf("failed to marshal order detail: %v", err)
-	}
-
-	orderCreatedEvent := ebTypes.PutEventsRequestEntry{
-		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
-		DetailType:   aws.String(string(enums.EVENT_TYPE.OrderCreated)),
-		Detail:       aws.String(string(detailJSON)),
-		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
-	}
-
-	err = eventbridge.SendEvent(orderCreatedEvent)
-	if err != nil {
-		tx.Rollback(ctx)
-		return nil, fmt.Errorf("failed to send order event to SQS: %v", err)
-	}
-
-	return &order, nil
+func (r *mutationResolver) CreateOrder(ctx context.Context, userID string, productID string, quantity int32) (*model.Order, error) {
+	return r.OrderService.CreateOrder(ctx, userID, productID, quantity)
 }
 
 // UpdateOrder is the resolver for the updateOrder field.
-func (r *mutationResolver) UpdateOrder(ctx context.Context, id string, productID string, quantity int32) (*model.Order, error) {
-	tx, err := r.DB.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create order: %v", err)
-	}
-	orderID := fmt.Sprintf("%d", time.Now().UnixNano())
-
-	order := model.Order{
-		ID:        orderID,
-		ProductID: productID,
-		Quantity:  quantity,
-		Status:    model.OrderStatusPending,
-	}
-
-	_, err = tx.Exec(ctx, `INSERT INTO orders (id, product_id, quantity, status, created_at) VALUES ($1, $2, $3, $4, $5)`,
-		order.ID, order.ProductID, order.Quantity, order.Status)
-	if err != nil {
-		tx.Rollback(ctx)
-		return nil, fmt.Errorf("failed to create order: %v", err)
-	}
-
-	// emit order created event
-	detail := models.Order{
-		ID:        order.ID,
-		ProductID: order.ProductID,
-		Quantity:  order.Quantity,
-		Status:    model.OrderStatusPending.String(),
-	}
-
-	detailJSON, err := json.Marshal(detail)
-	if err != nil {
-		tx.Rollback(ctx)
-		log.Fatalf("failed to marshal order detail: %v", err)
-	}
-
-	orderCreatedEvent := ebTypes.PutEventsRequestEntry{
-		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
-		DetailType:   aws.String(string(enums.EVENT_TYPE.OrderCreated)),
-		Detail:       aws.String(string(detailJSON)),
-		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
-	}
-
-	err = eventbridge.SendEvent(orderCreatedEvent)
-	if err != nil {
-		tx.Rollback(ctx)
-		return nil, fmt.Errorf("failed to send order event to SQS: %v", err)
-	}
-
-	return &order, nil
+func (r *mutationResolver) UpdateOrder(ctx context.Context, id string, productID string, quantity int32, status model.OrderStatus) (*model.Order, error) {
+	return r.OrderService.UpdateOrder(ctx, id, productID, quantity, status)
 }
 
 // CancelOrder is the resolver for the cancelOrder field.
 func (r *mutationResolver) CancelOrder(ctx context.Context, id string) (*model.Order, error) {
-	tx, err := r.DB.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create order: %v", err)
-	}
-	orderID := fmt.Sprintf("%d", time.Now().UnixNano())
-
-	order := model.Order{
-		ID:        orderID,
-		ProductID: productID,
-		Quantity:  quantity,
-		Status:    model.OrderStatusPending,
-	}
-
-	_, err = tx.Exec(ctx, `INSERT INTO orders (id, product_id, quantity, status, created_at) VALUES ($1, $2, $3, $4, $5)`,
-		order.ID, order.ProductID, order.Quantity, order.Status)
-	if err != nil {
-		tx.Rollback(ctx)
-		return nil, fmt.Errorf("failed to create order: %v", err)
-	}
-
-	// emit order created event
-	detail := models.Order{
-		ID:        order.ID,
-		ProductID: order.ProductID,
-		Quantity:  order.Quantity,
-		Status:    model.OrderStatusPending.String(),
-	}
-
-	detailJSON, err := json.Marshal(detail)
-	if err != nil {
-		tx.Rollback(ctx)
-		log.Fatalf("failed to marshal order detail: %v", err)
-	}
-
-	orderCreatedEvent := ebTypes.PutEventsRequestEntry{
-		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
-		DetailType:   aws.String(string(enums.EVENT_TYPE.OrderCreated)),
-		Detail:       aws.String(string(detailJSON)),
-		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
-	}
-
-	err = eventbridge.SendEvent(orderCreatedEvent)
-	if err != nil {
-		tx.Rollback(ctx)
-		return nil, fmt.Errorf("failed to send order event to SQS: %v", err)
-	}
-
-	return &order, nil
+	return r.OrderService.CancelOrder(ctx, id)
 }
 
 // Orders is the resolver for the orders field.
 func (r *queryResolver) Orders(ctx context.Context) ([]*model.Order, error) {
-	fmt.Println("qrqjwrqwejkrnqwjkenr")
-	rows, err := r.DB.Query(ctx, "SELECT id, product_id, quantity, status FROM orders")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var orders []*model.Order
-	for rows.Next() {
-		var o model.Order
-		if err := rows.Scan(&o.ID, &o.ProductID, &o.Quantity, &o.Status); err != nil {
-			return nil, err
-		}
-		orders = append(orders, &o)
-	}
-	return orders, nil
+	return r.OrderService.GetAllOrders(ctx)
 }
 
 // Order is the resolver for the order field.
 func (r *queryResolver) Order(ctx context.Context, id string) (*model.Order, error) {
-	fmt.Println("qrqjwrqwejkrnqwjkenr")
-	rows, err := r.DB.Query(ctx, "SELECT id, product_id, quantity, status FROM orders")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var orders *model.Order
-	for rows.Next() {
-		var o model.Order
-		if err := rows.Scan(&o.ID, &o.ProductID, &o.Quantity, &o.Status); err != nil {
-			return nil, err
-		}
-		orders = &o
-	}
-	return orders, nil
+	return r.OrderService.GetOrderByID(ctx, id)
 }
 
 // Mutation returns MutationResolver implementation.

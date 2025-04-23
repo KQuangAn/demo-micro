@@ -1,83 +1,71 @@
-version: '3.8'
-
 services:
   # Frontend
-  frontend-microfrontend1:
-    build:
-      context: ./frontend/microfrontend1
-      dockerfile: Dockerfile
-    ports:
-      - "3001:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:3001/api
-    volumes:
-      - ./frontend/microfrontend1:/app
-    working_dir: /app
-    command: turbo dev --port 3000
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - '3000:3000'
+  #     - '3001:3001'
+  #     - '3002:3002'
+  #   environment:
+  #     - NEXT_PUBLIC_API_URL=http://localhost:3001/api
+  #   volumes:
+  #     - ./frontend/microfrontend1:/app
+  #   working_dir: /app
+  #   command: turbo dev --port 3000
+  # # Backend
+  # orders-service:
+  #   build:
+  #     context: ./services/orders
+  #   ports:
+  #     - '4001:4000'
+  #   environment:
+  #     - DATABASE_URL=postgres://orders_user:orders_password@orders-db:5432/orders_db
+  #   depends_on:
+  #     - orders-db
+  #     - eventbridge
+  #     - sqs
+  #   networks:
+  #     - app-network
 
-  frontend-microfrontend2:
-    build:
-      context: ./frontend/microfrontend2
-      dockerfile: Dockerfile
-    ports:
-      - "3002:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:3002/api
-    volumes:
-      - ./frontend/microfrontend2:/app
-    working_dir: /app
-    command: turbo dev --port 3000
+  # inventory-service:
+  #   build:
+  #     context: ./services/inventory
+  #   ports:
+  #     - '4002:4000'
+  #   environment:
+  #     - DATABASE_URL=postgres://inventory_user:inventory_password@inventory-db:5432/inventory_db
+  #   depends_on:
+  #     - inventory-db
+  #     - eventbridge
+  #     - sqs
+  #   networks:
+  #     - app-network
 
-  # Backend
-  orders-service:
-    build:
-      context: ./services/orders
-    ports:
-      - "4001:4000"
-    environment:
-      - DATABASE_URL=postgres://orders_user:orders_password@orders-db:5432/orders_db
-    depends_on:
-      - orders-db
-      - eventbridge
-      - sqs
-    networks:
-      - app-network
-
-  inventory-service:
-    build:
-      context: ./services/inventory
-    ports:
-      - "4002:4000"
-    environment:
-      - DATABASE_URL=postgres://inventory_user:inventory_password@inventory-db:5432/inventory_db
-    depends_on:
-      - inventory-db
-      - eventbridge
-      - sqs
-    networks:
-      - app-network
-
-  notification-service:
-    build:
-      context: ./services/notification
-    ports:
-      - "4003:4000"
-    environment:
-      - DATABASE_URL=postgres://notification_user:notification_password@notification-db:5432/notification_db
-    depends_on:
-      - notification-db
-      - eventbridge
-      - sqs
-    networks:
-      - app-network
+  # notification-service:
+  #   build:
+  #     context: ./services/notification
+  #   ports:
+  #     - '4003:4000'
+  #   environment:
+  #     - DATABASE_URL=postgres://notification_user:notification_password@notification-db:5432/notification_db
+  #   depends_on:
+  #     - notification-db
+  #     - eventbridge
+  #     - sqs
+  #   networks:
+  #     - app-network
 
   # Databases for Each Service
   orders-db:
     image: postgres:13
     environment:
-      POSTGRES_USER: orders_user
-      POSTGRES_PASSWORD: orders_password
-      POSTGRES_DB: orders_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: orders
+    ports:
+      - '5431:5432'
     volumes:
       - orders-db-data:/var/lib/postgresql/data
     networks:
@@ -86,22 +74,28 @@ services:
   inventory-db:
     image: postgres:13
     environment:
-      POSTGRES_USER: inventory_user
-      POSTGRES_PASSWORD: inventory_password
-      POSTGRES_DB: inventory_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: inventory
+    ports:
+      - '5432:5432'
     volumes:
       - inventory-db-data:/var/lib/postgresql/data
     networks:
       - app-network
 
   notification-db:
-    image: postgres:13
+    image: mongo:latest
     environment:
-      POSTGRES_USER: notification_user
-      POSTGRES_PASSWORD: notification_password
-      POSTGRES_DB: notification_db
+      - MONGO_INITDB_DATABASE=noti
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=root
+    ports:
+      - '27017-27019:27017-27019'
     volumes:
-      - notification-db-data:/var/lib/postgresql/data
+      - mongodbdata:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    restart: always
     networks:
       - app-network
 
@@ -109,21 +103,21 @@ services:
   localstack:
     image: localstack/localstack
     ports:
-      - "4566:4566"
-      - "4510-4559:4510-4559"
+      - '4566:4566'
+      - '4510-4559:4510-4559'
     environment:
       - DEFAULT_REGION=us-east-1
       - SERVICES=sqs,events
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock"
+      - '/var/run/docker.sock:/var/run/docker.sock'
     networks:
       - app-network
-
   # Volumes
-  volumes:
-    orders-db-data:
-    inventory-db-data:
-    notification-db-data:
+volumes:
+  orders-db-data:
+  inventory-db-data:
+  mongodbdata:
+    driver: local
 
 networks:
   app-network:

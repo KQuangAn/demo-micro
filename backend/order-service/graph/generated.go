@@ -49,8 +49,8 @@ type DirectiveRoot struct {
 type ComplexityRoot struct {
 	Mutation struct {
 		CancelOrder func(childComplexity int, id string) int
-		CreateOrder func(childComplexity int, productID string, quantity int32) int
-		UpdateOrder func(childComplexity int, id string, productID string, quantity int32) int
+		CreateOrder func(childComplexity int, userID string, productID string, quantity int32) int
+		UpdateOrder func(childComplexity int, id string, productID string, quantity int32, status model.OrderStatus) int
 	}
 
 	Order struct {
@@ -70,8 +70,8 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	CreateOrder(ctx context.Context, productID string, quantity int32) (*model.Order, error)
-	UpdateOrder(ctx context.Context, id string, productID string, quantity int32) (*model.Order, error)
+	CreateOrder(ctx context.Context, userID string, productID string, quantity int32) (*model.Order, error)
+	UpdateOrder(ctx context.Context, id string, productID string, quantity int32, status model.OrderStatus) (*model.Order, error)
 	CancelOrder(ctx context.Context, id string) (*model.Order, error)
 }
 type QueryResolver interface {
@@ -120,7 +120,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateOrder(childComplexity, args["productId"].(string), args["quantity"].(int32)), true
+		return e.complexity.Mutation.CreateOrder(childComplexity, args["userID"].(string), args["productId"].(string), args["quantity"].(int32)), true
 
 	case "Mutation.updateOrder":
 		if e.complexity.Mutation.UpdateOrder == nil {
@@ -132,7 +132,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateOrder(childComplexity, args["id"].(string), args["productId"].(string), args["quantity"].(int32)), true
+		return e.complexity.Mutation.UpdateOrder(childComplexity, args["id"].(string), args["productId"].(string), args["quantity"].(int32), args["status"].(model.OrderStatus)), true
 
 	case "Order.createdAt":
 		if e.complexity.Order.CreatedAt == nil {
@@ -351,18 +351,36 @@ func (ec *executionContext) field_Mutation_cancelOrder_argsID(
 func (ec *executionContext) field_Mutation_createOrder_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Mutation_createOrder_argsProductID(ctx, rawArgs)
+	arg0, err := ec.field_Mutation_createOrder_argsUserID(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["productId"] = arg0
-	arg1, err := ec.field_Mutation_createOrder_argsQuantity(ctx, rawArgs)
+	args["userID"] = arg0
+	arg1, err := ec.field_Mutation_createOrder_argsProductID(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["quantity"] = arg1
+	args["productId"] = arg1
+	arg2, err := ec.field_Mutation_createOrder_argsQuantity(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["quantity"] = arg2
 	return args, nil
 }
+func (ec *executionContext) field_Mutation_createOrder_argsUserID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+	if tmp, ok := rawArgs["userID"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_createOrder_argsProductID(
 	ctx context.Context,
 	rawArgs map[string]any,
@@ -407,6 +425,11 @@ func (ec *executionContext) field_Mutation_updateOrder_args(ctx context.Context,
 		return nil, err
 	}
 	args["quantity"] = arg2
+	arg3, err := ec.field_Mutation_updateOrder_argsStatus(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["status"] = arg3
 	return args, nil
 }
 func (ec *executionContext) field_Mutation_updateOrder_argsID(
@@ -445,6 +468,19 @@ func (ec *executionContext) field_Mutation_updateOrder_argsQuantity(
 	}
 
 	var zeroVal int32
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateOrder_argsStatus(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (model.OrderStatus, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+	if tmp, ok := rawArgs["status"]; ok {
+		return ec.unmarshalNOrderStatus2orderserviceᚋgraphᚋmodelᚐOrderStatus(ctx, tmp)
+	}
+
+	var zeroVal model.OrderStatus
 	return zeroVal, nil
 }
 
@@ -608,7 +644,7 @@ func (ec *executionContext) _Mutation_createOrder(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateOrder(rctx, fc.Args["productId"].(string), fc.Args["quantity"].(int32))
+		return ec.resolvers.Mutation().CreateOrder(rctx, fc.Args["userID"].(string), fc.Args["productId"].(string), fc.Args["quantity"].(int32))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -679,7 +715,7 @@ func (ec *executionContext) _Mutation_updateOrder(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpdateOrder(rctx, fc.Args["id"].(string), fc.Args["productId"].(string), fc.Args["quantity"].(int32))
+		return ec.resolvers.Mutation().UpdateOrder(rctx, fc.Args["id"].(string), fc.Args["productId"].(string), fc.Args["quantity"].(int32), fc.Args["status"].(model.OrderStatus))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

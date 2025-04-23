@@ -39,14 +39,15 @@ export default async function Product({
 }: {
   params: { productId: string };
 }) {
-  const productId = await params.productId;
+  const para = await params;
+  const productId = para.productId;
   const res = await inventoryClient.query({
     query: GET_INVENTORY_ITEMS_BY_ID,
     variables: {
       id: productId,
     },
   });
-  
+
   if (res?.error) {
     return <div>Error fetching data</div>;
   }

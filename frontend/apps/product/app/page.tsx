@@ -37,6 +37,7 @@ export default async function Index({
     inventoryClient.query({ query: GET_ALL_INVENTORY }),
     inventoryClient.query({ query: GET_ALL_CATEGORY }),
   ]);
+  console.log(productsResult, 1231232);
   if (
     productsResult?.status == 'rejected' ||
     categoriesResult?.status == 'rejected'

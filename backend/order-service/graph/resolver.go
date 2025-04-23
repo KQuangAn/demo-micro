@@ -1,7 +1,7 @@
 package graph
 
 import (
-	"github.com/jackc/pgx/v5/pgxpool"
+	"orderservice/internal/services"
 )
 
 // This file will not be regenerated automatically.
@@ -9,5 +9,5 @@ import (
 // It serves as dependency injection for your app, add any dependencies you require here.
 
 type Resolver struct {
-	DB *pgxpool.Pool
+	OrderService *services.OrderService
 }

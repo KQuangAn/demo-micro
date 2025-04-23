@@ -11,12 +11,31 @@ import {
 import { isVariableValid } from '../../lib/utils';
 import { useCartContext } from '../../providers/cart-provider';
 import { Separator } from '../../components/ui/separator';
+import { CREATE_ORDER, ordersClient } from '@repo/apollo-client';
+import { useMutation } from '@apollo/client';
 
 export function Receipt() {
   //const { authenticated } = useAuthenticated();
   const { loading, cart, refreshCart, dispatchCart } = useCartContext();
+  const [createOrder] = useMutation(CREATE_ORDER, { client: ordersClient });
 
-  const handleCheckout = async () => {};
+  const handleCheckout = async () => {
+    const ordersToCreate = cart.items.map((item) => ({
+      productId: item.productId,
+      quantity: item.count,
+    }));
+    console.log(ordersToCreate);
+    try {
+      const createOrderPromises = ordersToCreate.map((order) =>
+        createOrder({ variables: order })
+      );
+
+      const results = await Promise.all(createOrderPromises);
+      console.log('Batch order creation results:', results);
+    } catch (error) {
+      console.error('Error creating orders in batch:', error);
+    }
+  };
 
   function calculatePayableCost() {
     let totalAmount = 0,

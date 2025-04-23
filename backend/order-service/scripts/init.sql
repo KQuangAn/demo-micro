@@ -1,23 +1,27 @@
-CREATE TABLE inventory (
-    id          VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
-    title       VARCHAR(255) NOT NULL,
-    brand       VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    images      TEXT[] NOT NULL,  
-    categories  TEXT[] NOT NULL,  
-    quantity    INT NOT NULL,
-    price       FLOAT NOT NULL,
-    discount     FLOAT NOT NULL,
-    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
-    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+
+-- Create the orders table with UUIDs
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";  -- Enable the UUID extension
+
+CREATE TYPE order_status AS ENUM ('PENDING', 'PROCESSING', 'COMPLETED', 'CANCELLED');
+
+
+CREATE TABLE orders (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL,
+    product_id UUID NOT NULL,
+    quantity INT NOT NULL CHECK (quantity >= 1),
+    status order_status NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO inventory (id, title, brand, description, images, categories, quantity, price, discount, createdAt, updatedAt) VALUES
-(gen_random_uuid(), 'Widget A', 'Brand X', 'High-quality widget for various applications', 
- ARRAY['https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg', 'image2.jpg'], ARRAY['Tools', 'Gadgets'], 100, 19.99, 0.10, NOW(), NOW()),
-(gen_random_uuid(), 'Widget B', 'Brand Y', 'Economical widget with basic features', 
- ARRAY['https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg'], ARRAY['Tools'], 200, 9.99, 0.05, NOW(), NOW()),
-(gen_random_uuid(), 'Gadget X', 'Brand Z', 'Advanced gadget with innovative technology', 
- ARRAY['https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg'], ARRAY['Electronics'], 50, 49.99, 0.15, NOW(), NOW()),
-(gen_random_uuid(), 'Gadget Y', 'Brand X', 'Compact gadget suitable for everyday use', 
- ARRAY['https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg'], ARRAY['Electronics', 'Accessories'], 75, 29.99, 0.20, NOW(), NOW());
+-- Insert sample data into the orders table
+INSERT INTO orders (id, user_id, product_id, quantity, status, created_at, updated_at)
+VALUES
+    (uuid_generate_v4(), '550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001', 2, 'PENDING', NOW(), NOW()),
+    (uuid_generate_v4(), '550e8400-e29b-41d4-a716-446655440002', '550e8400-e29b-41d4-a716-446655440003', 5, 'PENDING', NOW(), NOW()),
+    (uuid_generate_v4(), '550e8400-e29b-41d4-a716-446655440004', '550e8400-e29b-41d4-a716-446655440005', 1, 'COMPLETED', NOW(), NOW());
+    
+   
+select * from orders o 

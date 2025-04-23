@@ -9,5 +9,5 @@ type EventBridgeMessage struct {
 	Time       string   `json:"time"`
 	Region     string   `json:"region"`
 	Resources  []string `json:"resources"`
-	Detail     Order    `json:"detail"` // This will hold the order details
+	Detail     Order    `json:"detail"`
 }

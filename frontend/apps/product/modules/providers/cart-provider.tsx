@@ -1,18 +1,21 @@
-"use client";
+'use client';
 import React, {
   createContext,
   ReactNode,
   useContext,
   useEffect,
   useState,
-} from "react";
-import { writeLocalCart, getLocalCart } from "../lib/cart";
+} from 'react';
+import { writeLocalCart, getLocalCart } from '../lib/cart';
+import { TCart } from '../types/index';
 
 const CartContext = createContext({
-  cart: null,
+  cart: {
+    items: [],
+  },
   loading: false,
   refreshCart: () => {},
-  dispatchCart: (object: unknown) => {},
+  dispatchCart: (cart: TCart) => {},
 });
 
 export const useCartContext = () => {
@@ -20,10 +23,10 @@ export const useCartContext = () => {
 };
 
 export const CartContextProvider = ({ children }: { children: ReactNode }) => {
-  const [cart, setCart] = useState(() => getLocalCart());
+  const [cart, setCart] = useState<TCart>(() => getLocalCart());
   const [loading, setLoading] = useState(false);
 
-  const dispatchCart = async (cart) => {
+  const dispatchCart = async (cart: TCart) => {
     setCart(cart);
     writeLocalCart(cart);
   };

@@ -9,23 +9,30 @@ import (
 	"path/filepath"
 
 	"orderservice/graph"
-	"orderservice/internal/db"
+	db "orderservice/internal/db"
+	"orderservice/internal/services"
 	"orderservice/internal/sqs"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/extension"
+	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/joho/godotenv"
 )
 
-func handleMessage(message string) {
-	fmt.Printf("Processing message: %s\n", message)
-}
-
-func graphqlHandler(dbPool *db.DBPool) http.HandlerFunc {
+func graphqlHandler(orderService *services.OrderService) http.HandlerFunc {
 	// NewExecutableSchema and Config are in the generated.go file
 	// Resolver is in the resolver.go file
-	h := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{DB: dbPool.Pool}}))
+
+	h := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{OrderService: orderService}}))
+	h.AddTransport(transport.POST{})
+
+	h.AddTransport(transport.Options{})
+	h.AddTransport(transport.GET{})
+	h.Use(extension.Introspection{})
+
 	return func(w http.ResponseWriter, r *http.Request) {
+		r.Header.Set("Content-Type", "application/json")
 		h.ServeHTTP(w, r)
 	}
 }
@@ -56,7 +63,6 @@ func main() {
 		log.Fatalf("unable to load SDK config, %v", err)
 	}
 
-	go sqs.StartSQSConsumer(handleMessage, ORDERS_QUEUE_URL)
 	ctx := context.Background()
 
 	dbPool, err := db.NewDBPool(ctx)
@@ -66,11 +72,18 @@ func main() {
 
 	defer dbPool.Close()
 
+	orderService := services.NewOrderService(dbPool.Pool)
+
+	go sqs.StartSQSConsumer(ORDERS_QUEUE_URL, orderService)
+
 	// Use Go's default HTTP server
-	http.HandleFunc("/query", graphqlHandler(dbPool))
+	http.HandleFunc("/graphql", graphqlHandler(orderService))
 
 	// Start the server
-	port := "8080"
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "9001"
+	}
 	fmt.Printf("Starting server on :%s\n", port)
 	err = http.ListenAndServe(":"+port, nil)
 	if err != nil {

@@ -24,7 +24,7 @@ func NewDBPool(ctx context.Context) (*DBPool, error) {
 	}
 
 	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s", user, password, url, dbName)
-	fmt.Println(connStr)
+
 	config, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pgx config: %w", err)

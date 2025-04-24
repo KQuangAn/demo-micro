@@ -83,13 +83,14 @@ func (s *OrderService) CreateOrder(ctx context.Context, userId string, productID
 		return nil, err
 	}
 
-	orderCreatedEvent := ebTypes.PutEventsRequestEntry{
+	orderCreatedEvent := &ebTypes.PutEventsRequestEntry{
 		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
-		DetailType:   aws.String(string(enums.EVENT_TYPE.OrderPlaced)),
+		DetailType:   aws.String(enums.EVENT_TYPE.OrderPlaced.String()),
 		Detail:       aws.String(string(detailJSON)),
 		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
 	}
-
+	fmt.Println(*orderCreatedEvent)
+	fmt.Println(enums.EVENT_TYPE.OrderUpdated.String())
 	err = eventbridge.SendEvent(orderCreatedEvent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send order event to EventBridge: %v", err)
@@ -134,14 +135,15 @@ func (s *OrderService) UpdateOrder(ctx context.Context, id string, productID str
 		log.Fatalf("failed to marshal order detail: %v", err)
 	}
 
-	OrderPlacedEvent := ebTypes.PutEventsRequestEntry{
+	OrderUpdatedEvent := &ebTypes.PutEventsRequestEntry{
 		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
-		DetailType:   aws.String(string(enums.EVENT_TYPE.OrderUpdated)),
+		DetailType:   aws.String(enums.EVENT_TYPE.OrderUpdated.String()),
 		Detail:       aws.String(string(detailJSON)),
 		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
 	}
+	fmt.Println(OrderUpdatedEvent)
 
-	err = eventbridge.SendEvent(OrderPlacedEvent)
+	err = eventbridge.SendEvent(OrderUpdatedEvent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send order event to SQS: %v", err)
 	}
@@ -187,14 +189,14 @@ func (s *OrderService) CancelOrder(ctx context.Context, id string) (*model.Order
 		return nil, err
 	}
 
-	orderUpdatedEvent := ebTypes.PutEventsRequestEntry{
+	event := &ebTypes.PutEventsRequestEntry{
 		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
-		DetailType:   aws.String(string(enums.EVENT_TYPE.OrderCancelled)), // Use appropriate event type
+		DetailType:   aws.String(enums.EVENT_TYPE.OrderCancelled.String()), // Use appropriate event type
 		Detail:       aws.String(string(detailJSON)),
 		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
 	}
 
-	err = eventbridge.SendEvent(orderUpdatedEvent)
+	err = eventbridge.SendEvent(event)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send order event to EventBridge: %v", err)
 	}

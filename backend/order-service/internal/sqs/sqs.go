@@ -43,7 +43,7 @@ func init() {
 func handleMessage(message *types.Message, msgValidator *validator.Validator, orderService *services.OrderService) {
 	//validate
 	var event models.EventBridgeMessage
-	log.Printf("Received message: %s", message)
+	log.Print("Received message:123", *message.Body)
 
 	valid := msgValidator.Validate(message, &event)
 
@@ -54,7 +54,7 @@ func handleMessage(message *types.Message, msgValidator *validator.Validator, or
 	//check which type of event it is
 	ctx := context.Background()
 	switch event.DetailType {
-	case string(enums.EVENT_TYPE.InventoryReserved):
+	case enums.EVENT_TYPE.InventoryReserved.String():
 		order, err := orderService.UpdateOrder(ctx, event.Detail.ID, event.Detail.ProductID, event.Detail.Quantity, model.OrderStatus(event.Detail.Status))
 		if err != nil {
 			fmt.Printf("Error updating order: %v\n", err)
@@ -62,7 +62,7 @@ func handleMessage(message *types.Message, msgValidator *validator.Validator, or
 			fmt.Printf("Order updated successfully: %+v\n", order)
 		}
 
-	case string(enums.EVENT_TYPE.InventoryReservationFailed):
+	case enums.EVENT_TYPE.InventoryReservationFailed.String():
 		order, err := orderService.CancelOrder(ctx, event.Detail.ID)
 		if err != nil {
 			fmt.Printf("Error cancelling order: %v\n", err)

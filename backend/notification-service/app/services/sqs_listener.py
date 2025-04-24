@@ -1,6 +1,7 @@
 import os
 import boto3
 import json
+from app.constant import EventType
 from app.models import Notification
 from app.db import db
 from dotenv import load_dotenv
@@ -25,10 +26,21 @@ def receive_messages():
 
 def process_message(message):
     notification_data = json.loads(message['Body'])
-    create_notification(notification_data['message'], notification_data['recipient'])
+    detail_type = notification_data['detail-type']
+    userId = notification_data['detail']['userID']
+    print(message)
+    # Using if-elif-else for conditional logic
+    if detail_type == EventType.ORDER_UPDATED:
+        # Handle order updated case
+        print("Order updated")
+    elif detail_type == EventType.ORDER_CANCELLED:
+        # Handle order cancelled case
+        print("Order cancelled")
+    else:
+        print("Unhandled event type")
 
-def create_notification(message, recipient):
-    notification = Notification(message, recipient)
+def create_notification(message, recipient, type):
+    notification = Notification(user_id=recipient, message=message, type=type)
     db.notifications.insert_one(notification.to_dict())
     
     # Send event to EventBridge

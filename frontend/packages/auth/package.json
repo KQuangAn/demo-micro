@@ -1,0 +1,23 @@
+{
+  "name": "@repo/auth",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "dev": "tsc --watch --project tsconfig.build.json",
+    "build": "tsc --project tsconfig.build.json",
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit --project tsconfig.build.json"
+  },
+  "dependencies": {
+    "next-auth": "4.24.11"
+  }
+}

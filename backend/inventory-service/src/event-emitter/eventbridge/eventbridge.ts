@@ -10,10 +10,9 @@ import { IEventEmitter } from '../event-emitter.interface';
 export class EventBridge implements IEventEmitter {
   private client: EventBridgeClient;
   constructor(private readonly config: ConfigService) {
-    console.log(this.config?.get('AWS_REGION'));
-
     this.client = new EventBridgeClient({
       region: this.config?.get('AWS_REGION'),
+      endpoint: this.config?.get('AWS_ENDPOINT'),
     });
   }
   async emit(event: PutEventsRequestEntry[] | PutEventsRequestEntry) {
@@ -22,7 +21,7 @@ export class EventBridge implements IEventEmitter {
     const command = new PutEventsCommand({
       Entries: entries,
     });
-
+    console.log(event, 'emmititng');
     await this.client.send(command);
   }
 }

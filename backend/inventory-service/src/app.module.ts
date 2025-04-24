@@ -9,7 +9,6 @@ import { AuthModule } from './auth/auth.module';
 import { join } from 'path';
 import { getEnv } from 'config';
 import { EventEmitterModule } from './event-emitter/event-emitter.module';
-import { ApolloClientModule } from './apollo-client/apollo-client.module';
 import { MessageHandlerModule } from './queue/message-handler/message-handler.module';
 import { DateScalar } from './graphql/date.scalar';
 
@@ -31,7 +30,6 @@ import { DateScalar } from './graphql/date.scalar';
     EventEmitterModule,
     MessageHandlerModule,
     PrismaModule,
-    ApolloClientModule,
     QueueModule,
     InventoryModule,
   ],

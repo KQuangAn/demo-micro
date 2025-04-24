@@ -1,16 +1,14 @@
 from bson import ObjectId
 from pydantic import BaseModel, Field
-from datetime import UTC, datetime
-
+from datetime import datetime, timezone 
 class Notification(BaseModel):
-    user_id: int
+    user_id: str
     order_id: int = None
     type: str
     message: str
     status: str = 'unread'
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     def to_dict(self):
         return {
             "user_id": self.user_id,

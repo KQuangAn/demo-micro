@@ -11,7 +11,7 @@ export const createEvent = ({
   return [
     {
       EventBusName: process.env.EVENT_BUS_NAME,
-      Source: process.env.EVENT_BUS_NAME,
+      Source: process.env.EVENT_BRIDGE_SOURCE,
       DetailType: type,
       Detail: JSON.stringify(payload),
     },
@@ -19,8 +19,5 @@ export const createEvent = ({
 };
 
 export const isOrders = (detail: any): detail is TOrders[] => {
-  return (
-    Array.isArray(detail) &&
-    detail.every((order) => OrdersSchema.safeParse(order).success)
-  );
+  return Array.isArray(detail) || OrdersSchema.safeParse(detail).success;
 };

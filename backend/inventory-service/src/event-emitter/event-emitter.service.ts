@@ -16,7 +16,7 @@ export class EventEmitterService implements IEventEmitter {
     const command = new PutEventsCommand({
       Entries: event,
     });
-
+    console.log(event);
     await this.client.emit(command);
   }
 }

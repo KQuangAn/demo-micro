@@ -1,5 +1,8 @@
-const EVENT_TYPE = {
-	NOTIFICATION_CREATED = "notification.created",
-	NOTIFICATION_SENT = "notification.sent",
-	NOTIFICATION_CREATED = "order.placed",
-}
+class EventType:
+    ORDER_PLACED = 'order_placed'
+    ORDER_UPDATED = 'order_updated'
+    ORDER_CANCELLED = 'order_cancelled'
+    INVENTORY_RESERVED = 'inventory_reserved'
+    INVENTORY_RESERVATION_FAILED = 'inventory_reservation_failed'
+    NOTIFICATION_SENT_SUCCESS = 'notification_sent_success'
+    NOTIFICATION_SENT_FAILED = 'notification_sent_failed'

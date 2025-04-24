@@ -34,7 +34,17 @@ export type TOrders = z.infer<typeof OrdersSchema>;
 
 export const QueueMessage = z.object({
   'detail-type': z.nativeEnum(EventType),
-  detail: z.array(InventorySchema).or(z.array(OrdersSchema)),
+  detail: OrdersSchema,
 });
 
-export type TQueueMessage = z.infer<typeof QueueMessage>;
+export type TMessage = z.infer<typeof QueueMessage>;
+
+export const SQSMessageSchema = z.object({
+  Body: z.object({
+    'detail-type': z.nativeEnum(EventType),
+    detail: OrdersSchema,
+  }),
+  MD5OfBody: z.string(),
+  MessageId: z.string(),
+  ReceiptHandle: z.string(),
+});

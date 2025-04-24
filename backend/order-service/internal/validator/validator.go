@@ -34,11 +34,15 @@ func (v *Validator) Validate(msgBody *types.Message, model interface{}) bool {
 		}
 		return name
 	})
-	validationErrors := err.(validator.ValidationErrors)
-
-	if validationErrors != nil {
-		for _, e := range err.(validator.ValidationErrors) {
-			log.Printf("Validation failed for field '%s': %s", e.Field(), e.Tag())
+	err = v.validate.Struct(model)
+	if err != nil {
+		validationErrors, ok := err.(validator.ValidationErrors)
+		if ok {
+			for _, e := range validationErrors {
+				log.Printf("Validation failed for field '%s': %s", e.Field(), e.Tag())
+			}
+		} else {
+			log.Printf("Validation error: %v", err)
 		}
 		return false
 	}

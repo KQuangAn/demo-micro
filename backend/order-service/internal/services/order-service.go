@@ -11,7 +11,6 @@ import (
 	"orderservice/pkg/enums"
 	"os"
 
-	"github.com/google/uuid"
 	pgx "github.com/jackc/pgx/v5"
 	pgxpool "github.com/jackc/pgx/v5/pgxpool"
 
@@ -61,13 +60,11 @@ func (s *OrderService) CreateOrder(ctx context.Context, userId string, productID
 	}
 	defer tx.Rollback(ctx)
 
-	userId = uuid.NewString()
-
 	order := model.Order{
 		UserID:    userId,
 		ProductID: productID,
 		Quantity:  quantity,
-		Status:    model.OrderStatus(enums.Pending.String()),
+		Status:    model.OrderStatus(model.OrderStatusPending.String()),
 	}
 
 	_, err = tx.Exec(ctx, `INSERT INTO orders (user_id , product_id, quantity, status) VALUES ($1, $2, $3, $4)`,
@@ -89,8 +86,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, userId string, productID
 		Detail:       aws.String(string(detailJSON)),
 		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
 	}
-	fmt.Println(*orderCreatedEvent)
-	fmt.Println(enums.EVENT_TYPE.OrderUpdated.String())
+
 	err = eventbridge.SendEvent(orderCreatedEvent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send order event to EventBridge: %v", err)
@@ -122,6 +118,7 @@ func (s *OrderService) UpdateOrder(ctx context.Context, id string, productID str
 	if err != nil {
 		return nil, fmt.Errorf("failed to update order: %v", err)
 	}
+
 	// emit order created event
 	detail := model.Order{
 		ID:        order.ID,
@@ -141,7 +138,6 @@ func (s *OrderService) UpdateOrder(ctx context.Context, id string, productID str
 		Detail:       aws.String(string(detailJSON)),
 		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
 	}
-	fmt.Println(OrderUpdatedEvent)
 
 	err = eventbridge.SendEvent(OrderUpdatedEvent)
 	if err != nil {
@@ -168,7 +164,7 @@ func (s *OrderService) CancelOrder(ctx context.Context, id string) (*model.Order
 		return nil, fmt.Errorf("order not found: %v", err)
 	}
 
-	order.Status = model.OrderStatus(enums.Cancelled.String())
+	order.Status = model.OrderStatus(model.OrderStatusCancelled.String())
 
 	_, err = tx.Exec(ctx, `UPDATE orders SET status = $1 WHERE id = $2`, order.Status, order.ID)
 	if err != nil {
@@ -191,7 +187,7 @@ func (s *OrderService) CancelOrder(ctx context.Context, id string) (*model.Order
 
 	event := &ebTypes.PutEventsRequestEntry{
 		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
-		DetailType:   aws.String(enums.EVENT_TYPE.OrderCancelled.String()), // Use appropriate event type
+		DetailType:   aws.String(enums.EVENT_TYPE.OrderCancelled.String()),
 		Detail:       aws.String(string(detailJSON)),
 		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
 	}

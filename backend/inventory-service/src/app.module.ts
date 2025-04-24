@@ -16,7 +16,8 @@ import { DateScalar } from './graphql/date.scalar';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [getEnv],
+      load: [() => getEnv()],
+      envFilePath: join(__dirname, '..', '.env'),
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
@@ -35,4 +36,4 @@ import { DateScalar } from './graphql/date.scalar';
   ],
   providers: [],
 })
-export class AppModule {}
+export class AppModule { }

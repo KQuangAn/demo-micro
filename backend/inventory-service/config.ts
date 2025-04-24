@@ -24,7 +24,6 @@ export const getEnv = (): TEnvConfig => {
     AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
     AWS_ENDPOINT: process.env.AWS_ENDPOINT,
   };
-
   const parsedEnv = envSchema.safeParse(env);
 
   if (!parsedEnv.success) {

@@ -45,6 +45,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=test
       - AWS_DEFAULT_REGION=ap-southeast-1
       - AWS_SESSION_TOKEN=test
+      - AWS_ENDPOINT=http://localstack:4566
     env_file:
       - ./backend/inventory-service/.env
     depends_on:

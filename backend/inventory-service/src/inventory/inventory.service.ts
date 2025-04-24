@@ -16,7 +16,7 @@ export class InventoryService {
   constructor(
     private prisma: PrismaService,
     private eb: EventEmitterService,
-  ) {}
+  ) { }
 
   async findAll(): Promise<Inventory[]> {
     return this.prisma.inventory.findMany();
@@ -129,7 +129,11 @@ export class InventoryService {
           EventType.InventoryUpdated,
         );
       });
-    } catch {}
+    } catch (e) {
+      const reason = `Error cancelling orders :${e}`;
+      await this.eb.emit({ payload, reason }, EventType.InventoryReservationFailed);
+      throw new BadRequestException(`Error cancelling orders`, e);
+    }
   }
 
   async handleOrderUpdated(payload: TOrders): Promise<void | Inventory> {
@@ -165,9 +169,10 @@ export class InventoryService {
 
         return res;
       });
-    } catch {
-      await this.eb.emit(payload, EventType.InventoryReservationFailed);
-      throw new BadRequestException(`Error creating orders`);
+    } catch (e) {
+      const reason = `Error updating orders :${e}`;
+      await this.eb.emit({ payload, reason }, EventType.InventoryReservationFailed);
+      throw new BadRequestException(`Error updating orders`, e);
     }
   }
 
@@ -207,9 +212,10 @@ export class InventoryService {
 
         return res;
       });
-    } catch {
-      await this.eb.emit(payload, EventType.InventoryReservationFailed);
-      throw new BadRequestException(`Error creating orders`);
+    } catch (e) {
+      const reason = `Error creating orders :${e}`;
+      await this.eb.emit({ payload, reason }, EventType.InventoryReservationFailed);
+      throw new BadRequestException(`Error creating orders`, e);
     }
   }
 }

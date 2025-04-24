@@ -1,5 +1,4 @@
-import { forwardRef, Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { Module } from '@nestjs/common';
 import { QueueService } from './queue.service';
 import { MessageHandlerModule } from './message-handler/message-handler.module';
 import { InventoryMessageHandler } from './message-handler/message-handler.implementation';
@@ -7,7 +6,7 @@ import { SqsModule } from './sqs/sqs.module';
 import { SqsClient } from './sqs/sqs.client';
 
 @Module({
-  imports: [ConfigModule, SqsModule, MessageHandlerModule],
+  imports: [SqsModule, MessageHandlerModule],
   providers: [
     QueueService,
     {

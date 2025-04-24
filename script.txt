@@ -1,1 +1,50 @@
  docker-compose up -d --force-recreate --no-deps --build inventory-service
+
+
+# 🔧 Push Event: order_placed
+aws --endpoint-url=http://localhost:4566 events put-events --entries "[{
+  \"Source\": \"com.order.service\",
+  \"DetailType\": \"order_placed\",
+  \"Detail\": \"{\\\"id\\\":\\\"F461BFA3-E7E1-4A0E-BC90-92DD88E66662\\\",\\\"user_id\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"productId\\\":\\\"b20fe875-15fd-4dc2-adc7-9e9843c1548b\\\",\\\"quantity\\\":1,\\\"status\\\":\\\"Pending\\\",\\\"createdAt\\\":\\\"2025-04-24T16:00:00Z\\\",\\\"updatedAt\\\":\\\"2025-04-24T16:00:00Z\\\"}\",
+  \"EventBusName\": \"evbus\"
+}]"
+
+# 🔧 Push Event: order_cancelled
+aws --endpoint-url=http://localhost:4566 events put-events --entries "[{
+  \"Source\": \"com.order.service\",
+  \"DetailType\": \"order_cancelled\",
+  \"Detail\": \"{\\\"id\\\":\\\"F461BFA3-E7E1-4A0E-BC90-92DD88E66662\\\",\\\"user_id\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"productId\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"quantity\\\":1,\\\"status\\\":\\\"Cancelled\\\",\\\"createdAt\\\":\\\"2025-04-24T16:00:00Z\\\",\\\"updatedAt\\\":\\\"2025-04-24T16:01:00Z\\\"}\",
+  \"EventBusName\": \"evbus\"
+}]"
+
+# 🔧 Push Event: inventory_reserved
+aws --endpoint-url=http://localhost:4566 events put-events --entries "[{
+  \"Source\": \"com.inventory.service\",
+  \"DetailType\": \"inventory_reserved\",
+  \"Detail\": \"{\\\"id\\\":\\\"F461BFA3-E7E1-4A0E-BC90-92DD88E66662\\\",\\\"user_id\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"productId\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"quantity\\\":1,\\\"status\\\":\\\"Processing\\\",\\\"createdAt\\\":\\\"2025-04-24T16:02:00Z\\\",\\\"updatedAt\\\":\\\"2025-04-24T16:02:00Z\\\"}\",
+  \"EventBusName\": \"evbus\"
+}]"
+
+# 🔧 Push Event: inventory_reservation_failed
+aws --endpoint-url=http://localhost:4566 events put-events --entries "[{
+  \"Source\": \"com.inventory.service\",
+  \"DetailType\": \"inventory_reservation_failed\",
+  \"Detail\": \"{\\\"id\\\":\\\"F461BFA3-E7E1-4A0E-BC90-92DD88E66662\\\",\\\"user_id\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"productId\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"quantity\\\":1,\\\"status\\\":\\\"Pending\\\",\\\"createdAt\\\":\\\"2025-04-24T16:02:00Z\\\",\\\"updatedAt\\\":\\\"2025-04-24T16:02:00Z\\\"}\",
+  \"EventBusName\": \"evbus\"
+}]"
+
+# 🔧 Push Event: notification_sent_success
+aws --endpoint-url=http://localhost:4566 events put-events --entries "[{
+  \"Source\": \"com.notification.service\",
+  \"DetailType\": \"notification_sent_success\",
+  \"Detail\": \"{\\\"id\\\":\\\"F461BFA3-E7E1-4A0E-BC90-92DD88E66662\\\",\\\"user_id\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"productId\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"quantity\\\":1,\\\"status\\\":\\\"Completed\\\",\\\"createdAt\\\":\\\"2025-04-24T16:03:00Z\\\",\\\"updatedAt\\\":\\\"2025-04-24T16:03:00Z\\\"}\",
+  \"EventBusName\": \"evbus\"
+}]"
+
+# 🔧 Push Event: notification_sent_failed
+aws --endpoint-url=http://localhost:4566 events put-events --entries "[{
+  \"Source\": \"com.notification.service\",
+  \"DetailType\": \"notification_sent_failed\",
+  \"Detail\": \"{\\\"id\\\":\\\"F461BFA3-E7E1-4A0E-BC90-92DD88E66662\\\",\\\"user_id\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"productId\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"quantity\\\":1,\\\"status\\\":\\\"Pending\\\",\\\"createdAt\\\":\\\"2025-04-24T16:03:00Z\\\",\\\"updatedAt\\\":\\\"2025-04-24T16:03:00Z\\\"}\",
+  \"EventBusName\": \"evbus\"
+}]"

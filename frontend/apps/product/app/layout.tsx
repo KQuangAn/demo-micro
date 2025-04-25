@@ -1,18 +1,18 @@
-import { ModalProvider } from "../modules/providers/modal-provider";
-import { ToastProvider } from "../modules/providers/toast-provider";
-import { Inter } from "next/font/google";
+import { ModalProvider } from '../modules/providers/modal-provider';
+import { ToastProvider } from '../modules/providers/toast-provider';
+import { Inter } from 'next/font/google';
 
-import "./globals.css";
-import Header from "../modules/components/native/nav/parent";
-import Footer from "../modules/components/native/Footer";
-import ThemeProvider from "../modules/providers/theme-provider";
+import './globals.css';
+import Header from '../modules/components/native/nav/parent';
+import Footer from '../modules/components/native/Footer';
+import ThemeProvider from '../modules/providers/theme-provider';
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
-  title: "Store",
-  description: "E-Commerce Store",
-  keywords: ["E-Commerce", "Store", "Shop"],
+  title: 'Store',
+  description: 'E-Commerce Store',
+  keywords: ['E-Commerce', 'Store', 'Shop'],
 };
 
 export default async function RootLayout({

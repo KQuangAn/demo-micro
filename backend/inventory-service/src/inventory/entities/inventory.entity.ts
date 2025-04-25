@@ -1,7 +1,8 @@
-import { ObjectType, Field, ID, Int, Float } from '@nestjs/graphql';
+import { ObjectType, Field, ID, Int, Float, Directive } from '@nestjs/graphql';
 import { DateScalar } from 'src/graphql/date.scalar';
 
 @ObjectType()
+@Directive('@key(fields: "id")')
 export class Inventory {
   @Field(() => ID)
   id: string;

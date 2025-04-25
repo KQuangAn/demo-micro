@@ -1,4 +1,4 @@
-type Order {
+type Order @key(fields: "id") {
   id: ID!
   userID: ID!
   productId: ID!

@@ -10,6 +10,7 @@ import {
 } from '../providers/cart-provider';
 import { Button } from '../components/ui/button';
 import { TInventory } from '@repo/apollo-client';
+import { TCart } from '../types';
 
 export default function CartButton({ product }: TInventory) {
   return (
@@ -20,157 +21,97 @@ export default function CartButton({ product }: TInventory) {
 }
 
 export function ButtonComponent({ product }: TInventory) {
-  const { loading, cart, refreshCart, dispatchCart } = useCartContext();
-
-  const [fetchingCart, setFetchingCart] = useState(false);
-
-  function findLocalCartIndexById(array, productId) {
-    for (let i = 0; i < array.length; i++) {
-      if (array?.items[i]?.productId === productId) {
-        return i;
-      }
-    }
-    return -1;
-  }
-
+  const { cart, dispatchCart } = useCartContext();
+  const [itemCount, setItemCount] = useState(
+    () => cart?.items?.find((item) => item?.productId == product.id)?.count || 0
+  );
+  console.log(cart);
   async function onAddToCart() {
+    console.log('assdasdfdd');
     try {
-      setFetchingCart(true);
+      const localCart = getLocalCart() as TCart;
 
-      const count = getCountInCart({
-        cartItems: cart?.items,
-        productId: product?.id,
-      });
-      if (count > product?.quantity) {
-        throw Error;
-      }
-      // const response = await fetch(`/api/cart`, {
-      //   method: "POST",
-      //   body: JSON.stringify({
-      //     productId: product?.id,
-      //     count:
-      //       getCountInCart({
-      //         cartItems: cart?.items,
-      //         productId: product?.id,
-      //       }) + 1,
-      //   }),
-      //   cache: "no-store",
-      //   headers: {
-      //     "Content-Type": "application/json-string",
-      //   },
-      // });
-
-      // const json = await response.json();
-
-      //dispatchCart(json);
-
-      const localCart = getLocalCart() as any;
-      console.log(localCart);
       // if already in cart => ++ 1
-      if (count > 0) {
+      if (localCart?.items?.findIndex((x) => x.productId == product.id) > 0) {
         for (let i = 0; i < localCart.items.length; i++) {
-          if (localCart.items[i].productId === product?.id) {
-            localCart.items[i].count = localCart.items[i].count + 1;
+          if (
+            localCart?.items[i]?.productId &&
+            localCart?.items[i]?.productId === product?.id
+          ) {
+            localCart.items[i].count = itemCount;
           }
         }
 
         dispatchCart(localCart);
-      }
-      console.log('12312', localCart);
-
-      if (count < 1) {
+      } else {
         localCart.items.push({
           productId: product?.id,
           product,
-          count: 1,
+          count: itemCount,
         });
+        console.log('324');
 
+        console.log(localCart);
         dispatchCart(localCart);
       }
-
-      setFetchingCart(false);
-      console.log('done');
     } catch (error) {
       console.error({ error });
-    } finally {
-      setFetchingCart(false);
     }
   }
 
-  async function onRemoveFromCart() {
-    try {
-      setFetchingCart(true);
+  const onAddItemCount = () => {
+    setItemCount((count) => (count++ > product.quantity ? count : count++));
+  };
+  const onDecreaseItemCount = () => {
+    setItemCount((count) => (count-- >= 0 ? count-- : count));
+  };
 
-      const count = getCountInCart({
-        cartItems: cart?.items,
-        productId: product?.id,
-      });
-
-      const localCart = getLocalCart() as any;
-      const index = findLocalCartIndexById(localCart, product?.id);
-
-      if (count > 1) {
-        for (let i = 0; i < localCart.items.length; i++) {
-          if (localCart.items[i].productId === product?.id) {
-            localCart.items[i].count = localCart.items[i].count - 1;
-          }
-        }
-
-        dispatchCart(localCart);
-      }
-
-      if (count === 1) {
-        localCart.items.splice(index, 1);
-
-        dispatchCart(localCart);
-      }
-
-      setFetchingCart(false);
-    } catch (error) {
-      console.error({ error });
-    } finally {
-      setFetchingCart(false);
-    }
-  }
-
-  if (fetchingCart)
+  if (itemCount === 0) {
     return (
-      <Button disabled>
-        <Spinner />
-      </Button>
-    );
-
-  const count = getCountInCart({
-    cartItems: cart?.items,
-    productId: product?.id,
-  });
-
-  if (count === 0) {
-    return (
-      <Button className="flex gap-2" onClick={onAddToCart}>
+      <Button className="flex gap-2" onClick={onAddItemCount}>
         <ShoppingBasketIcon className="h-4" /> Add to Cart
       </Button>
     );
   }
-
-  if (count > 0) {
+  if (itemCount > 0) {
     return (
-      <>
-        <Button variant="outline" size="icon" onClick={onRemoveFromCart}>
-          {count == 1 ? (
-            <X className="h-4 w-4" />
-          ) : (
-            <MinusIcon className="h-4 w-4" />
-          )}
-        </Button>
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex gap-2 w-full">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onDecreaseItemCount}
+            className="flex-1"
+          >
+            {itemCount == 1 ? (
+              <X className="h-4 w-4" />
+            ) : (
+              <MinusIcon className="h-4 w-4" />
+            )}
+          </Button>
 
-        <Button disabled variant="outline" size="icon">
-          {count}
+          <Button disabled variant="outline" size="icon" className="flex-2">
+            {itemCount}
+          </Button>
+          <Button
+            className="flex-1"
+            variant="outline"
+            size="icon"
+            onClick={onAddItemCount}
+          >
+            <PlusIcon className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={onAddToCart}
+          className="flex-1 p-4 w-full"
+        >
+          Add
         </Button>
-        <Button variant="outline" size="icon" onClick={onAddToCart}>
-          <PlusIcon className="h-4 w-4" />
-        </Button>
-      </>
+      </div>
     );
   }
 }

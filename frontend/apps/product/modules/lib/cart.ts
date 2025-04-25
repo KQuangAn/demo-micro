@@ -1,8 +1,10 @@
+import { TCart } from '../types';
+
 export function writeLocalCart(items: unknown) {
   window.localStorage.setItem('Cart', JSON.stringify(items));
 }
 
-export function getLocalCart() {
+export function getLocalCart(): TCart {
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
       const cart = window.localStorage.getItem('Cart');
@@ -14,6 +16,8 @@ export function getLocalCart() {
       writeLocalCart({ items: [] });
       return { items: [] };
     }
+  } else {
+    return { items: [] };
   }
 }
 

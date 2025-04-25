@@ -43,11 +43,9 @@ func SendEvent(ev *ebTypes.PutEventsRequestEntry) error {
 		Detail:       aws.String(*ev.Detail),
 		EventBusName: aws.String(*ev.EventBusName),
 	}
-	fmt.Println("event entry", eventEntry, *ev.Source, *ev.DetailType, *ev.Detail, *ev.EventBusName)
 	putEventsInput := &eb.PutEventsInput{
 		Entries: []ebTypes.PutEventsRequestEntry{eventEntry},
 	}
-	fmt.Println("putEventsInput", putEventsInput)
 
 	_, err := client.PutEvents(context.Background(), putEventsInput)
 	if err != nil {

@@ -56,7 +56,7 @@ func handleMessage(message *types.Message, msgValidator *validator.Validator, or
 	switch event.DetailType {
 	case enums.EVENT_TYPE.InventoryReserved.String():
 		log.Println("InventoryReserved")
-		order, err := orderService.UpdateOrder(ctx, event.Detail.ID, event.Detail.ProductID, event.Detail.Quantity, model.OrderStatus(model.OrderStatusPending.String()))
+		order, err := orderService.UpdateOrder(ctx, event.Detail.ID, event.Detail.ProductID, event.Detail.Quantity, model.OrderStatus(model.OrderStatusProcessing.String()))
 		if err != nil {
 			fmt.Printf("Error updating order: %v\n", err)
 		} else {
@@ -71,8 +71,16 @@ func handleMessage(message *types.Message, msgValidator *validator.Validator, or
 		} else {
 			fmt.Printf("Order cancelled successfully: %+v\n", order)
 		}
-	}
+	case enums.EVENT_TYPE.NotificationSentSuccess.String():
+		log.Println("NotificationSentSuccess")
+		order, err := orderService.UpdateOrder(ctx, event.Detail.ID, event.Detail.ProductID, event.Detail.Quantity, model.OrderStatus(model.OrderStatusCompleted.String()))
+		if err != nil {
+			fmt.Printf("Error updating order: %v\n", err)
+		} else {
+			fmt.Printf("Order updated successfully: %+v\n", order)
+		}
 
+	}
 }
 
 func StartSQSConsumer(queueURL string, orderService *services.OrderService) {

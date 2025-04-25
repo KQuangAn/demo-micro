@@ -6,3 +6,13 @@ class EventType:
     INVENTORY_RESERVATION_FAILED = 'inventory_reservation_failed'
     NOTIFICATION_SENT_SUCCESS = 'notification_sent_success'
     NOTIFICATION_SENT_FAILED = 'notification_sent_failed'
+    
+    ALL_TYPES = {
+        ORDER_PLACED,
+        ORDER_UPDATED,
+        ORDER_CANCELLED,
+        INVENTORY_RESERVED,
+        INVENTORY_RESERVATION_FAILED,
+        NOTIFICATION_SENT_SUCCESS,
+        NOTIFICATION_SENT_FAILED,
+    }

@@ -19,7 +19,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@strawberry.type
+@strawberry.federation.type(keys=['id'])
 class NotificationType:
     id : str
     user_id: int
@@ -42,7 +42,7 @@ class Mutation:
         res = db.notifications.insert_one(notification.to_dict())
         return NotificationType(id= res.inserted_id, order_id=notification.order_id, type=notification.type,status=notification.status, message=notification.message, user_id=recipient , created_at=notification.created_at, updated_at=notification.updated_at)
 
-schema = strawberry.Schema(query=Query, mutation=Mutation)
+schema = strawberry.federation.Schema(query=Query, mutation=Mutation, enable_federation_2=True)
 graphql_app = GraphQLRouter(schema)
 
 app.include_router(graphql_app, prefix="/graphql")

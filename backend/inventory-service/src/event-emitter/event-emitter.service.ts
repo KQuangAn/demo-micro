@@ -13,6 +13,7 @@ export class EventEmitterService implements IEventEmitter {
       type: type,
       payload: res,
     });
+    console.log(event, 'new emitting event');
     const command = new PutEventsCommand({
       Entries: event,
     });

@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { Button } from '../../components/ui/button';
 import {
   Card,
@@ -11,24 +10,38 @@ import {
 import { isVariableValid } from '../../lib/utils';
 import { useCartContext } from '../../providers/cart-provider';
 import { Separator } from '../../components/ui/separator';
-import { CREATE_ORDER, ordersClient } from '@repo/apollo-client';
-import { useMutation } from '@apollo/client';
+import { CREATE_ORDER } from '@repo/apollo-client';
+import { ApolloClient, InMemoryCache, useMutation } from '@apollo/client';
 
 export function Receipt() {
   //const { authenticated } = useAuthenticated();
   const { loading, cart, refreshCart, dispatchCart } = useCartContext();
-  const [createOrder] = useMutation(CREATE_ORDER, { client: ordersClient });
+  const endpoint = process.env.NEXT_PUBLIC_ORDERS_ENDPOINT;
+  const client = new ApolloClient({
+    uri: endpoint || '',
+    cache: new InMemoryCache(),
+  });
+
+  const [createOrder] = useMutation(CREATE_ORDER, { client: client });
 
   const handleCheckout = async () => {
     const ordersToCreate = cart.items.map((item) => ({
-      productId: item.productId,
-      quantity: item.count,
+      productId: item?.productId,
+      quantity: item?.quantity,
     }));
-    console.log(ordersToCreate);
     try {
       const createOrderPromises = ordersToCreate.map((order) =>
         createOrder({ variables: order })
       );
+
+      // const res = await ordersClient.mutate({
+      //   mutation: CREATE_ORDER,
+      //   variables: {
+      //     userID: 1,
+      //     productId: ordersToCreate[0]?.productId,
+      //     quantity: ordersToCreate[0]?.quantity,
+      //   },
+      // });
 
       const results = await Promise.all(createOrderPromises);
       console.log('Batch order creation results:', results);

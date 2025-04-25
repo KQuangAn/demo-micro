@@ -22,19 +22,29 @@ fi
 
 # Create SQS Queues
 aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name orders-queue &
+aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name orders-dead-letter-queue &
 aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name notification-queue &
+aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name notification-dead-letter-queue &
 aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name inventory-queue &
+aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name inventory-dead-letter-queue &
+
+
+#config main queue
+ORDERS_DLQ_URL=$(aws --endpoint-url=http://localhost:4566 sqs get-queue-url --queue-name orders-dead-letter-queue --output text --query QueueUrl)
+INVENTORY_DLQ_URL=$(aws --endpoint-url=http://localhost:4566 sqs get-queue-url --queue-name inventory-dead-letter-queue --output text --query QueueUrl)
+NOTIFICATION_DLQ_URL=$(aws --endpoint-url=http://localhost:4566 sqs get-queue-url --queue-name notification-dead-letter-queue --output text --query QueueUrl)
+
+echo "Orders DLQ URL: $ORDERS_DLQ_URL"
+echo "Inventory DLQ URL: $INVENTORY_DLQ_URL"
+echo "Notification DLQ URL: $NOTIFICATION_DLQ_URL"
+
+aws --endpoint-url=http://localhost:4566 sqs set-queue-attributes --queue-url "$ORDERS_DLQ_URL" --attributes "{\"RedrivePolicy\":\"{\\\"maxReceiveCount\\\":\\\"5\\\", \\\"deadLetterTargetArn\\\":\\\"$ORDERS_DLQ_URL\\\"}\"}"
+aws --endpoint-url=http://localhost:4566 sqs set-queue-attributes --queue-url "$INVENTORY_DLQ_URL" --attributes "{\"RedrivePolicy\":\"{\\\"maxReceiveCount\\\":\\\"5\\\", \\\"deadLetterTargetArn\\\":\\\"$INVENTORY_DLQ_URL\\\"}\"}"
+aws --endpoint-url=http://localhost:4566 sqs set-queue-attributes --queue-url "$NOTIFICATION_DLQ_URL" --attributes "{\"RedrivePolicy\":\"{\\\"maxReceiveCount\\\":\\\"5\\\", \\\"deadLetterTargetArn\\\":\\\"$NOTIFICATION_DLQ_URL\\\"}\"}"
 
 # Wait for all SQS queue creation to finish
 wait
 
-# Create EventBridge Event Bus if it doesn't exist
-if ! aws --endpoint-url=http://localhost:4566 events list-event-buses | grep -q "$EVENT_BUS_NAME"; then
-    echo "Creating event bus $EVENT_BUS_NAME..."
-    aws --endpoint-url=http://localhost:4566 events create-event-bus --name "$EVENT_BUS_NAME" &
-else
-    echo "Event bus $EVENT_BUS_NAME already exists."
-fi
 
 ORDER_SOURCE="com.order.service"
 INVENTORY_SOURCE="com.inventory.service"
@@ -49,6 +59,15 @@ aws --endpoint-url=http://localhost:4566 events put-rule \
       \"detail-type\": [\"order_placed\"]
     }" \
     --description "Capture OrderPlaced events" --region "${REGION}" &
+
+aws --endpoint-url=http://localhost:4566 events put-rule \
+    --name "order_processing" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --event-pattern "{
+      \"source\": [\"${ORDER_SOURCE}\"],
+      \"detail-type\": [\"order_processing\"]
+    }" \
+    --description "Capture order_processing events" --region "${REGION}" &
 
 aws --endpoint-url=http://localhost:4566 events put-rule \
     --name "order_cancelled" \
@@ -109,6 +128,11 @@ aws --endpoint-url=http://localhost:4566 events put-targets \
     --targets "Id"="1","Arn"="${TARGET_NOTIFICATION_ARN}" "Id"="2","Arn"="${TARGET_INVENTORY_ARN}" &
 
 aws --endpoint-url=http://localhost:4566 events put-targets \
+    --rule "order_processing" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" "Id"="2","Arn"="${TARGET_NOTIFICATION_ARN}" &
+
+aws --endpoint-url=http://localhost:4566 events put-targets \
     --rule "order_cancelled" \
     --event-bus-name "${EVENT_BUS_NAME}" \
     --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" "Id"="2","Arn"="${TARGET_NOTIFICATION_ARN}" &
@@ -126,12 +150,12 @@ aws --endpoint-url=http://localhost:4566 events put-targets \
 aws --endpoint-url=http://localhost:4566 events put-targets \
     --rule "notification_sent_success" \
     --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" &
+    --targets "Id"="1","Arn"="${TARGET_ORDERS_ARN}" &
 
 aws --endpoint-url=http://localhost:4566 events put-targets \
     --rule "notification_sent_failed" \
     --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" &
+    --targets "Id"="1","Arn"="${TARGET_ORDERS_ARN}" &
 
 # Wait for all target additions to finish
 wait

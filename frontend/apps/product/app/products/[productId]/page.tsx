@@ -51,7 +51,6 @@ export default async function Product({
   if (res?.error) {
     return <div>Error fetching data</div>;
   }
-  console.log(res, 12341234);
   const product = res?.data?.getInventory;
 
   const validated = InventorySchema.safeParse(product);

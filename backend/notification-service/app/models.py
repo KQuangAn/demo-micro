@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime, timezone 
 class Notification(BaseModel):
     user_id: str
-    order_id: int = None
+    order_id: str
     type: str
     message: str
     status: str = 'unread'

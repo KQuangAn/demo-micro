@@ -22,10 +22,9 @@ export class QueueService implements OnModuleInit, IQueueService {
       for (const message of response?.Messages || []) {
         try {
           //validate
-          console.log(message, 'recevied message');
           const body = JSON.parse(message?.Body ?? '{}');
           //const detail = JSON.parse(body?.detail ?? '{}');
-          console.log(body);
+          console.log(body, 'recevied message');
           QueueMessage.parse(body);
           //process
           await this.messageHandler.process(body);

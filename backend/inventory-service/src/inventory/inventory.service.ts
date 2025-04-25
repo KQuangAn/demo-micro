@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -16,7 +15,7 @@ export class InventoryService {
   constructor(
     private prisma: PrismaService,
     private eb: EventEmitterService,
-  ) { }
+  ) {}
 
   async findAll(): Promise<Inventory[]> {
     return this.prisma.inventory.findMany();
@@ -124,15 +123,15 @@ export class InventoryService {
             `Inventory item with id ${productId} not found`,
           );
         }
-        await this.eb.emit(
-          { productId: payload.productId, quantity: payload.quantity },
-          EventType.InventoryUpdated,
-        );
+        await this.eb.emit({ ...payload }, EventType.InventoryUpdated);
       });
     } catch (e) {
-      const reason = `Error cancelling orders :${e}`;
-      await this.eb.emit({ payload, reason }, EventType.InventoryReservationFailed);
-      throw new BadRequestException(`Error cancelling orders`, e);
+      const reason = `Error reserving inventory :${e}`;
+      await this.eb.emit(
+        { ...payload, reason },
+        EventType.InventoryReservationFailed,
+      );
+      throw new BadRequestException(`Error reserving inventory`, e);
     }
   }
 
@@ -162,17 +161,17 @@ export class InventoryService {
           throw new BadRequestException(`Error updating inventory`);
         }
 
-        await this.eb.emit(
-          { productId: payload.productId, quantity: payload.quantity },
-          EventType.InventoryUpdated,
-        );
+        await this.eb.emit({ ...payload }, EventType.InventoryUpdated);
 
         return res;
       });
     } catch (e) {
-      const reason = `Error updating orders :${e}`;
-      await this.eb.emit({ payload, reason }, EventType.InventoryReservationFailed);
-      throw new BadRequestException(`Error updating orders`, e);
+      const reason = `Error reserving inventory :${e}`;
+      await this.eb.emit(
+        { ...payload, reason },
+        EventType.InventoryReservationFailed,
+      );
+      throw new BadRequestException(`Error reserving inventory`, e);
     }
   }
 
@@ -213,9 +212,12 @@ export class InventoryService {
         return res;
       });
     } catch (e) {
-      const reason = `Error creating orders :${e}`;
-      await this.eb.emit({ payload, reason }, EventType.InventoryReservationFailed);
-      throw new BadRequestException(`Error creating orders`, e);
+      const reason = `Error reserving inventory :${e}`;
+      await this.eb.emit(
+        { ...payload, reason },
+        EventType.InventoryReservationFailed,
+      );
+      throw new BadRequestException(`Error reserving inventory`, e);
     }
   }
 }

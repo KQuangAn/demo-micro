@@ -1,4 +1,4 @@
-type Inventory {
+type Inventory @key(fields: "id") {
   id: String!
   title: String!
   brand: String!

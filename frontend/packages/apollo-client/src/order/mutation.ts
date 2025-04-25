@@ -14,6 +14,12 @@ export const CREATE_ORDER = gql`
   }
 `;
 
+// {
+//   "userID": "e7cf02af-515d-42b2-bb6a-283bd3bf92d2",
+//   "productId":"e7cf02af-515d-42b2-bb6a-283bd3bf92d2",
+//   "quantity": "3"
+// }
+
 export const UPDATE_ORDER = gql`
   mutation updateOrder(
     $id: ID!

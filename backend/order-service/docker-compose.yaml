@@ -2,7 +2,7 @@ services:
   localstack:
     image: localstack/localstack:latest
     environment:
-      - AWS_DEFAULT_REGION=ap-southest-1
+      - AWS_DEFAULT_REGION=ap-southeast-1
       - AWS_ACCESS_KEY_ID="test"
       - AWS_SECRET_ACCESS_KEY="test"
       - EDGE_PORT=4566

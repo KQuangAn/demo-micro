@@ -1,7 +1,11 @@
 import { GraphQLModule } from '@nestjs/graphql';
 import { InventoryModule } from './inventory/inventory.module';
 import { Module } from '@nestjs/common';
-import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
+import {
+  ApolloDriver,
+  ApolloDriverConfig,
+  ApolloFederationDriver,
+} from '@nestjs/apollo';
 import { QueueModule } from './queue/queue.module';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
@@ -20,8 +24,11 @@ import { DateScalar } from './graphql/date.scalar';
       envFilePath: join(__dirname, '..', '.env'),
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
-      driver: ApolloDriver,
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      driver: ApolloFederationDriver,
+      autoSchemaFile: {
+        federation: 2,
+        path: join(process.cwd(), 'src/schema.gql'),
+      },
       csrfPrevention: false, // temp
       resolvers: {
         Date: DateScalar, // Register the Date scalar type
@@ -36,4 +43,4 @@ import { DateScalar } from './graphql/date.scalar';
   ],
   providers: [],
 })
-export class AppModule { }
+export class AppModule {}

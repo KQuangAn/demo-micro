@@ -1,0 +1,17 @@
+schema @link(url: "http://localhost:9000/graphql") {
+  query: Query
+}
+
+schema @link(url: "http://localhost:9001/graphql") {
+  query: Query
+}
+
+schema @link(url: "http://localhost:9002/graphql") {
+  query: Query
+}
+
+extend type Query {
+  inventory: [Inventory!]!
+  orders: [Order!]!
+  notifications: [Notification!]!
+}

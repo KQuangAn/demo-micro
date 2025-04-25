@@ -22,6 +22,8 @@ type Order struct {
 	UpdatedAt string      `json:"updatedAt"`
 }
 
+func (Order) IsEntity() {}
+
 type Query struct {
 }
 

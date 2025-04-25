@@ -5,7 +5,7 @@
 aws --endpoint-url=http://localhost:4566 events put-events --entries "[{
   \"Source\": \"com.order.service\",
   \"DetailType\": \"order_placed\",
-  \"Detail\": \"{\\\"id\\\":\\\"F461BFA3-E7E1-4A0E-BC90-92DD88E66662\\\",\\\"user_id\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"productId\\\":\\\"b20fe875-15fd-4dc2-adc7-9e9843c1548b\\\",\\\"quantity\\\":1,\\\"status\\\":\\\"Pending\\\",\\\"createdAt\\\":\\\"2025-04-24T16:00:00Z\\\",\\\"updatedAt\\\":\\\"2025-04-24T16:00:00Z\\\"}\",
+  \"Detail\": \"{\\\"id\\\":\\\"F461BFA3-E7E1-4A0E-BC90-92DD88E66662\\\",\\\"user_id\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"productId\\\":\\\"e7cf02af-515d-42b2-bb6a-283bd3bf92d2\\\",\\\"quantity\\\":1,\\\"status\\\":\\\"Pending\\\",\\\"createdAt\\\":\\\"2025-04-24T16:00:00Z\\\",\\\"updatedAt\\\":\\\"2025-04-24T16:00:00Z\\\"}\",
   \"EventBusName\": \"evbus\"
 }]"
 
@@ -29,7 +29,7 @@ aws --endpoint-url=http://localhost:4566 events put-events --entries "[{
 aws --endpoint-url=http://localhost:4566 events put-events --entries "[{
   \"Source\": \"com.inventory.service\",
   \"DetailType\": \"inventory_reservation_failed\",
-  \"Detail\": \"{\\\"id\\\":\\\"F461BFA3-E7E1-4A0E-BC90-92DD88E66662\\\",\\\"user_id\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"productId\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"quantity\\\":1,\\\"status\\\":\\\"Pending\\\",\\\"createdAt\\\":\\\"2025-04-24T16:02:00Z\\\",\\\"updatedAt\\\":\\\"2025-04-24T16:02:00Z\\\"}\",
+  \"Detail\": \"{\\\"id\\\":\\\"0278de9f-3828-453d-ad72-f3f1efc9f495\\\",\\\"user_id\\\":\\\"f461bfa3-e7e1-4a0e-bc90-92dd88e66662\\\",\\\"productId\\\":\\\"7e5fbfd1-5fb3-45e4-a6ff-fa648402e016\\\",\\\"quantity\\\":1,\\\"status\\\":\\\"Pending\\\",\\\"createdAt\\\":\\\"2025-04-24T16:02:00Z\\\",\\\"updatedAt\\\":\\\"2025-04-24T16:02:00Z\\\"}\",
   \"EventBusName\": \"evbus\"
 }]"
 

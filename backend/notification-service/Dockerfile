@@ -10,9 +10,6 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Check the installation path of Uvicorn
-RUN which uvicorn && ls -l $(dirname $(which uvicorn))
-
 FROM python:3.9-slim AS production
 
 WORKDIR /app
@@ -24,7 +21,6 @@ RUN apt-get update && apt-get install -y \
 COPY --from=build /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
 COPY --from=build /usr/local/bin/uvicorn /usr/local/bin/uvicorn 
 
-# Copy your FastAPI app code
 COPY . .
 
 EXPOSE 9002

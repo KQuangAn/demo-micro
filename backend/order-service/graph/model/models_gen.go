@@ -30,10 +30,10 @@ type Query struct {
 type OrderStatus string
 
 const (
-	OrderStatusPending    OrderStatus = "PENDING"
-	OrderStatusProcessing OrderStatus = "PROCESSING"
-	OrderStatusCompleted  OrderStatus = "COMPLETED"
-	OrderStatusCancelled  OrderStatus = "CANCELLED"
+	OrderStatusPending    OrderStatus = "Pending"
+	OrderStatusProcessing OrderStatus = "Processing"
+	OrderStatusCompleted  OrderStatus = "Completed"
+	OrderStatusCancelled  OrderStatus = "Cancelled"
 )
 
 var AllOrderStatus = []OrderStatus{

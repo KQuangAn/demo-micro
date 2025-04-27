@@ -3,15 +3,15 @@
 import {
   GET_ALL_INVENTORY,
   GET_INVENTORY_ITEMS_PRICE_AND_QUANTITY_BY_ID,
-  inventoryClient,
-  ordersClient,
-} from '@repo/apollo-client';
+  client,
+  
+}from '@repo/apollo-client';
 import prisma from '../lib/prisma';
 
 export const createOrder = () => {
   try {
     const res = prisma.$transaction(async (transaction) => {
-      const inventoryInfo = await inventoryClient.query({
+      const inventoryInfo = await client.query({
         query: GET_INVENTORY_ITEMS_PRICE_AND_QUANTITY_BY_ID,
       });
 

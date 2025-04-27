@@ -5,9 +5,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MONGODB_URI = os.getenv('MONGODB_URI')
+MONGODB_DB = os.getenv('MONGODB_DB')
 
 client = MongoClient(MONGODB_URI)
-db = client.notifications
+db = client[MONGODB_DB]
 
 try:
     client.admin.command('ping')

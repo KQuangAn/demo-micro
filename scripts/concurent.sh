@@ -1,5 +1,6 @@
 #!/bin/bash
-set -e
+set +e #ignore err 
+
 export AWS_REGION="ap-southeast-1"
 export AWS_DEFAULT_REGION="ap-southeast-1"
 export AWS_ACCESS_KEY_ID="test"

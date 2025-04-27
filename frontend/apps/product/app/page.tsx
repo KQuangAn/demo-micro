@@ -17,7 +17,7 @@ import { Separator } from '../modules/components/ui/separator';
 import {
   GET_ALL_CATEGORY,
   GET_ALL_INVENTORY,
-  inventoryClient,
+  client,
 } from '@repo/apollo-client';
 
 export default async function Index({
@@ -34,8 +34,8 @@ export default async function Index({
   } = (await searchParams) ?? null;
 
   const [productsResult, categoriesResult] = await Promise.allSettled([
-    inventoryClient.query({ query: GET_ALL_INVENTORY }),
-    inventoryClient.query({ query: GET_ALL_CATEGORY }),
+    client.query({ query: GET_ALL_INVENTORY }),
+    client.query({ query: GET_ALL_CATEGORY }),
   ]);
   console.log(productsResult, 1231232);
   if (

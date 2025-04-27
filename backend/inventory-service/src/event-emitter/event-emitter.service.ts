@@ -1,5 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PutEventsCommand } from '@aws-sdk/client-eventbridge';
 import { IEventEmitter } from './event-emitter.interface';
 import { createEvent } from 'src/common/util';
 import { EventType } from 'src/common/types';
@@ -14,9 +13,7 @@ export class EventEmitterService implements IEventEmitter {
       payload: res,
     });
     console.log(event, 'new emitting event');
-    const command = new PutEventsCommand({
-      Entries: event,
-    });
-    await this.client.emit(command);
+
+    await this.client.emit(event);
   }
 }

@@ -7,8 +7,13 @@ import (
 	"orderservice/graph/model"
 	"orderservice/internal/models"
 	"orderservice/internal/services"
+	"orderservice/internal/utils"
 	"orderservice/internal/validator"
 	"orderservice/pkg/enums"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -18,8 +23,11 @@ import (
 
 var client *sqs.Client
 
-const MAX_NUMBER_OF_MESSAGE = 10
-const WAIT_TIME_SECONDS = 5
+var (
+	MAX_NUMBER_OF_MESSAGE = utils.GetEnv("MAX_NUMBER_OF_MESSAGE", int32(10))
+	WAIT_TIME_SECONDS     = utils.GetEnv("WAIT_TIME_SECONDS", int32(10))
+	MAX_CONSUMER          = utils.GetEnv("MAX_CONSUMER", 5)
+)
 
 func init() {
 	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithEndpointResolver(aws.EndpointResolverFunc(
@@ -41,9 +49,8 @@ func init() {
 }
 
 func handleMessage(message *types.Message, msgValidator *validator.Validator, orderService *services.OrderService) {
-	//validate
 	var event models.EventBridgeMessage
-	log.Print("Received message", *message.Body)
+	log.Print("Received message", message.Body)
 
 	valid := msgValidator.Validate(message, &event)
 
@@ -51,7 +58,6 @@ func handleMessage(message *types.Message, msgValidator *validator.Validator, or
 		return
 	}
 
-	//check which type of event it is
 	ctx := context.Background()
 	switch event.DetailType {
 	case enums.EVENT_TYPE.InventoryReserved.String():
@@ -84,17 +90,62 @@ func handleMessage(message *types.Message, msgValidator *validator.Validator, or
 }
 
 func StartSQSConsumer(queueURL string, orderService *services.OrderService) {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Graceful shutdown support
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	jobs := make(chan types.Message, 50)
+	var wg sync.WaitGroup
 
 	msgValidator := validator.New()
 	log.Println("Now accepting messages")
 
-	for {
-		output := receiveMessages(ctx, queueURL)
-		for _, msg := range output.Messages {
-			processMessage(&msg, msgValidator, queueURL, orderService)
-		}
+	for i := 0; i < MAX_CONSUMER; i++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			for msg := range jobs {
+				processMessage(&msg, msgValidator, queueURL, orderService)
+			}
+		}(i)
 	}
+
+	log.Println("SQS Consumer running...")
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				log.Println("Stopping message fetcher...")
+				return
+			default:
+				output := receiveMessages(ctx, queueURL)
+				for _, msg := range output.Messages {
+					select {
+					case jobs <- msg: // enqueue message
+					case <-ctx.Done():
+						return
+					}
+				}
+			}
+		}
+	}()
+
+	// Wait for interrupt
+	<-sigs
+	log.Println("Shutdown signal received. Cleaning up...")
+
+	// Stop receiving messages
+	cancel()
+
+	// Close job queue and wait for workers
+	close(jobs)
+	wg.Wait()
+
+	log.Println("All workers exited. Shutdown complete.")
 }
 
 func receiveMessages(ctx context.Context, queueURL string) *sqs.ReceiveMessageOutput {

@@ -4,7 +4,7 @@ import { DataSection } from '../../../modules/product/data';
 import Carousel from '../../../modules/components/native/Carousel';
 import {
   GET_INVENTORY_ITEMS_BY_ID,
-  inventoryClient,
+  client,
   InventorySchema,
 } from '@repo/apollo-client';
 import { TInventory } from '@repo/apollo-client';
@@ -41,7 +41,7 @@ export default async function Product({
 }) {
   const para = await params;
   const productId = para.productId;
-  const res = await inventoryClient.query({
+  const res = await client.query({
     query: GET_INVENTORY_ITEMS_BY_ID,
     variables: {
       id: productId,

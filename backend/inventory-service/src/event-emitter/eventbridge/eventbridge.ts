@@ -5,7 +5,9 @@ import {
 } from '@aws-sdk/client-eventbridge';
 import { IEventEmitter } from '../event-emitter.interface';
 import { ConfigService } from '@nestjs/config';
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { EventType } from 'src/common/types';
+import { createEvent } from 'src/common/util';
 
 //adapter file
 
@@ -23,8 +25,18 @@ export class EventBridge implements IEventEmitter {
     });
   }
 
+  onModuleInit() {
+    console.log('try emit')
+    const event = createEvent({
+      type: EventType.InventoryReserved,
+      payload: "lol",
+    });
+    this.emit(event)
+  }
   async emit(event: PutEventsRequestEntry[] | PutEventsRequestEntry) {
     const entries = Array.isArray(event) ? event : [event];
+
+    console.log(entries, 'entries')
     const command = new PutEventsCommand({
       Entries: entries,
     });

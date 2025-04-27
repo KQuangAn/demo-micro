@@ -9,10 +9,10 @@ type Order @key(fields: "id") {
 }
 
 enum OrderStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  CANCELLED
+  Pending
+  Processing
+  Completed
+  Cancelled
 }
 
 type Query {

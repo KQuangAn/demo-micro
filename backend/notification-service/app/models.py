@@ -1,21 +1,27 @@
-from bson import ObjectId
+import uuid
 from pydantic import BaseModel, Field
-from datetime import datetime, timezone 
+from datetime import datetime, timezone
+from typing import Optional
+from app.constant import NotificationStatus
+
+
 class Notification(BaseModel):
-    user_id: str
-    order_id: str
+    userId: uuid.UUID = Field(alias="user_id", default_factory=uuid.uuid4)
     type: str
-    message: str
-    status: str = 'unread'
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    message: Optional[str] = None
+    status: NotificationStatus
+    createdAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updatedAt: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
     def to_dict(self):
         return {
-            "user_id": self.user_id,
-            "order_id": self.order_id,
+            "user_id": self.userId,
             "type": self.type,
             "message": self.message,
             "status": self.status,
-            "created_at": self.created_at or datetime.now(),
-            "updated_at": self.updated_at or datetime.now(),
+            "created_at": self.createdAt,
+            "updated_at": self.updatedAt,
         }
+
+    class Config:
+        validate_by_name = True

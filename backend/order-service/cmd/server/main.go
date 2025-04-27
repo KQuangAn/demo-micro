@@ -10,6 +10,7 @@ import (
 
 	"orderservice/graph"
 	db "orderservice/internal/db"
+	"orderservice/internal/repository"
 	"orderservice/internal/services"
 	"orderservice/internal/sqs"
 
@@ -89,7 +90,9 @@ func main() {
 
 	defer dbPool.Close()
 
-	orderService := services.NewOrderService(dbPool.Pool)
+	orderRepo := repository.NewOrderRepository(dbPool.Pool)
+
+	orderService := services.NewOrderService(orderRepo)
 
 	go sqs.StartSQSConsumer(ORDERS_QUEUE_URL, orderService)
 

@@ -34,7 +34,7 @@ export function Receipt() {
         createOrder({ variables: order })
       );
 
-      // const res = await ordersClient.mutate({
+      // const res = await client.mutate({
       //   mutation: CREATE_ORDER,
       //   variables: {
       //     userID: 1,

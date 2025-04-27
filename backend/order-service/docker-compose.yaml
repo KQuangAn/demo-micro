@@ -1,4 +1,22 @@
 services:
+  orders-service:
+    build:
+      context: ./backend/order-service
+    ports:
+      - '9001:9001'
+    env_file:
+      - ./backend/order-service/.env
+    dns:
+      - 10.0.2.20
+    environment:
+      - PORT=9001
+      - DATABASE_URL=orders-db:5432
+      - AWS_ENDPOINT=http://localstack:4566
+    depends_on:
+      - orders-db
+      - localstack
+    networks:
+      - app-network
   localstack:
     image: localstack/localstack:latest
     environment:

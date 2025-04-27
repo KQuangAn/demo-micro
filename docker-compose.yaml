@@ -15,26 +15,30 @@ services:
   # Backend
   api-gateway:
     build:
-      context: ./backend/order-service
+      context: ./backend/api-gateway
     ports:
-      - '9001:9001'
+      - '8080:8080'
     env_file:
-      - ./backend/order-service/.env
-    dns:
-      - 10.0.2.20
+      - ./backend/api-gateway/.env
     environment:
-      - PORT=9001
-      - DATABASE_URL=orders-db:5432
+      - PORT=8080
       - AWS_ENDPOINT=http://localstack:4566
+      - AWS_REGION=http://localstack:4566
+      - ORDER_URL=http://order-service:9001/graphql 
+      - INVENTORY_URL=http://inventory-service:9000/graphql
+      - NOTIFICATION_URL=http://notification-service:9002/graphql
+      - NOTIFICATION_GET=http://notification-service:9002/schema
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=pass 
     depends_on:
-      - orders-service
+      - order-service
       - notification-service
       - inventory-service
       - redis
       - localstack
     networks:
       - app-network
-  orders-service:
+  order-service:
     build:
       context: ./backend/order-service
     ports:
@@ -45,10 +49,10 @@ services:
       - 10.0.2.20
     environment:
       - PORT=9001
-      - DATABASE_URL=orders-db:5432
+      - DATABASE_URL=order-db:5432
       - AWS_ENDPOINT=http://localstack:4566
     depends_on:
-      - orders-db
+      - order-db
       - localstack
     networks:
       - app-network
@@ -65,7 +69,7 @@ services:
       - DATABASE_URL=postgres://postgres:postgres@inventory-db:5432/inventory
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
-      - AWS_DEFAULT_REGION=ap-southeast-1
+      - AWS_REGION=ap-southeast-1
       - AWS_SESSION_TOKEN=test
       - AWS_ENDPOINT=http://localstack:4566
     env_file:
@@ -87,7 +91,10 @@ services:
       - AWS_SECRET_ACCESS_KEY=test
       - AWS_DEFAULT_REGION=ap-southeast-1
       - AWS_SESSION_TOKEN=test
-      - MONGODB_URI=mongodb://admin:root@notification-db:27017/noti
+      - MONGODB_URI=mongodb://admin:root@notification-db:27017/
+      - QUEUE_URL=http://localstack:4566/000000000000/notification-queue
+      - EVENT_BUS_NAME=evbus
+      - EVENT_BRIDGE_SOURCE=com.notification.service
     depends_on:
       - notification-db
       - localstack
@@ -95,7 +102,7 @@ services:
       - app-network
 
   # Databases for Each Service
-  orders-db:
+  order-db:
     image: postgres:13
     environment:
       POSTGRES_USER: postgres
@@ -104,7 +111,7 @@ services:
     ports:
       - '5431:5432'
     volumes:
-      - orders-db-data:/var/lib/postgresql/data
+      - order-db-data:/var/lib/postgresql/data
     networks:
       - app-network
 
@@ -144,21 +151,20 @@ services:
     environment:
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
-      - AWS_DEFAULT_REGION=ap-southeast-1
+      - AWS_REGION=ap-southeast-1
+      - DEFAULT_REGION=ap-southeast-1
       - SERVICES=sqs,events
       - DEBUG=${DEBUG:-0}
       - DNS_RESOLVE_IP=10.0.2.20
-      - PERSISTENCE=1
     volumes:
       - '/var/run/docker.sock:/var/run/docker.sock'
-      - ./concurent.sh:/concurent.sh
+      - ./scripts:/scripts
       - ./volume:/var/lib/localstack
     networks:
       app-network:
         ipv4_address: 10.0.2.20
     post_start:
-      - command:
-          ['sh', '-c', 'chmod +x /concurent.sh && /concurent.sh && exec "$@"']
+      - command: ['sh', '-c', 'ls -la /scripts && chmod +x /scripts/concurent.sh && /scripts/concurent.sh && exec "$@"']
         user: root
     healthcheck:
       test:
@@ -175,13 +181,14 @@ services:
       - '6379:6379'
     volumes:
       - redis-data:/data
+    environment:
+      - REDIS_PASSWORD=pass
 volumes:
   redis-data:
-  orders-db-data:
+  order-db-data:
   inventory-db-data:
   mongodbdata:
     driver: local
-
 networks:
   app-network:
     ipam:

@@ -8,12 +8,14 @@ export const createEvent = ({
   type: EventType;
   payload: unknown;
 }): PutEventsRequestEntry[] => {
+  const detail = typeof payload === 'string' ? { message: payload } : payload;
+
   return [
     {
       EventBusName: process.env.EVENT_BUS_NAME,
       Source: process.env.EVENT_BRIDGE_SOURCE,
       DetailType: type,
-      Detail: JSON.stringify(payload),
+      Detail:  JSON.stringify(detail),
     },
   ];
 };

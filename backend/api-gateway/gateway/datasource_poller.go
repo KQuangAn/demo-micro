@@ -16,10 +16,13 @@ import (
 )
 
 type ServiceConfig struct {
-	Name     string
-	URL      string
-	WS       string
-	Fallback func(*ServiceConfig) (string, error)
+	Name         string
+	URL          string
+	SchemaURL    string
+	Method       string
+	ResponseType string
+	WS           string
+	Fallback     func(*ServiceConfig) (string, error)
 }
 
 type DatasourcePollerConfig struct {
@@ -108,7 +111,7 @@ func (d *DatasourcePollerPoller) updateSDLs(ctx context.Context) {
 		go func() {
 			defer wg.Done()
 
-			sdl, err := d.fetchServiceSDL(ctx, serviceConf.URL)
+			sdl, err := d.fetchServiceSDL(ctx, serviceConf.SchemaURL, serviceConf.Method, serviceConf.ResponseType)
 			if err != nil {
 				log.Println("Failed to get sdl.", err)
 
@@ -175,8 +178,45 @@ func (d *DatasourcePollerPoller) createSubgraphsConfig() []engine.SubgraphConfig
 	return subgraphConfigs
 }
 
-func (d *DatasourcePollerPoller) fetchServiceSDL(ctx context.Context, serviceURL string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, serviceURL, bytes.NewReader([]byte(ServiceDefinitionQuery)))
+func (d *DatasourcePollerPoller) parseSDL(body io.Reader, responseType string) (string, error) {
+
+	bs, err := io.ReadAll(body)
+	if err != nil {
+		return "", fmt.Errorf("read bytes: %v", err)
+	}
+
+	//if endoint already return sdl string , return (for strawberry)
+	if responseType == "string" {
+		return string(bs), nil
+	}
+
+	var result struct {
+		Data struct {
+			Service struct {
+				SDL string `json:"sdl"`
+			} `json:"_service"`
+		} `json:"data"`
+		Errors GQLErr `json:"errors,omitempty"`
+	}
+
+	if err = json.NewDecoder(bytes.NewReader(bs)).Decode(&result); err != nil {
+		return "", fmt.Errorf("decode response: %v", err)
+	}
+
+	if result.Errors != nil {
+		return "", fmt.Errorf("response error:%v", result.Errors)
+	}
+	return result.Data.Service.SDL, nil
+}
+
+func (d *DatasourcePollerPoller) fetchServiceSDL(ctx context.Context, url string, method string, responseType string) (string, error) {
+	var req *http.Request
+	var err error
+	if method == "GET" {
+		req, err = http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	} else {
+		req, err = http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader([]byte(ServiceDefinitionQuery)))
+	}
 	req.Header.Add("Content-Type", "application/json")
 
 	if err != nil {
@@ -190,27 +230,6 @@ func (d *DatasourcePollerPoller) fetchServiceSDL(ctx context.Context, serviceURL
 
 	defer resp.Body.Close()
 
-	var result struct {
-		Data struct {
-			Service struct {
-				SDL string `json:"sdl"`
-			} `json:"_service"`
-		} `json:"data"`
-		Errors GQLErr `json:"errors,omitempty"`
-	}
+	return d.parseSDL(resp.Body, responseType)
 
-	bs, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("read bytes: %v", err)
-	}
-
-	if err = json.NewDecoder(bytes.NewReader(bs)).Decode(&result); err != nil {
-		return "", fmt.Errorf("decode response: %v", err)
-	}
-
-	if result.Errors != nil {
-		return "", fmt.Errorf("response error:%v", result.Errors)
-	}
-
-	return result.Data.Service.SDL, nil
 }

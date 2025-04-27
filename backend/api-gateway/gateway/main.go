@@ -1,6 +1,9 @@
 package main
 
 import (
+	appHandler "api-gateway/handler"
+	redis "api-gateway/redis"
+	"api-gateway/utils"
 	"context"
 	"fmt"
 	"net/http"
@@ -18,7 +21,6 @@ import (
 	"github.com/wundergraph/graphql-go-tools/v2/pkg/playground"
 )
 
-// It's just a simple example of graphql federation gateway server, it's NOT a production ready code.
 func logger() log.Logger {
 	logger, err := zap.NewDevelopmentConfig().Build()
 	if err != nil {
@@ -44,6 +46,8 @@ func startServer() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	utils.LoadEnvFile()
+
 	upgrader := &ws.DefaultHTTPUpgrader
 	upgrader.Header = http.Header{}
 	upgrader.Header.Add("Sec-Websocket-Protocol", "graphql-ws")
@@ -58,9 +62,9 @@ func startServer() {
 
 	datasourceWatcher := NewDatasourcePoller(httpClient, DatasourcePollerConfig{
 		Services: []ServiceConfig{
-			{Name: "order", URL: os.Getenv("ORDER_URL"), Fallback: fallback},
-			{Name: "inventory", URL: os.Getenv("INVENTORY_URL")},
-			{Name: "notification", URL: os.Getenv("NOTIFICATION_URL")},
+			{Name: "order", URL: os.Getenv("ORDER_URL"), SchemaURL: os.Getenv("ORDER_URL"), Fallback: fallback},
+			{Name: "inventory", URL: os.Getenv("INVENTORY_URL"), SchemaURL: os.Getenv("INVENTORY_URL")},
+			{Name: "notification", URL: os.Getenv("NOTIFICATION_URL"), SchemaURL: os.Getenv("NOTIFICATION_GET"), Method: "GET", ResponseType: "string"},
 		},
 		PollingInterval: 30 * time.Second,
 	})
@@ -94,17 +98,25 @@ func startServer() {
 	go datasourceWatcher.Run(ctx)
 
 	gateway.Ready()
+	//Initialize Redis
+	if err := redis.Init(); err != nil {
+		panic("Failed to connect to Redis: " + err.Error())
+	}
 
-	mux.Handle("/query", gateway)
+	mux.HandleFunc("/login", appHandler.LoginHandler)
+	mux.HandleFunc("/register", appHandler.RegisterHandler)
+
+	mux.Handle("/query", JWTMiddleware(gateway))
 
 	addr := "0.0.0.0:8080"
 	logger.Info("Listening",
 		log.String("add", addr),
 	)
 	fmt.Printf("Access Playground on: http://%s%s%s\n", prettyAddr(addr), playgroundURLPrefix, playgroundURL)
-	logger.Fatal("failed listening",
-		log.Error(http.ListenAndServe(addr, mux)),
-	)
+	err = http.ListenAndServe(addr, mux)
+	if err != nil {
+		logger.Fatal("failed listening", log.Error(err))
+	}
 }
 
 func prettyAddr(addr string) string {

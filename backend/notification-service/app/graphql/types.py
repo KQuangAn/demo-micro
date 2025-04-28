@@ -13,7 +13,7 @@ from uuid import UUID
 @strawberry.federation.type(keys=["id"])
 class NotificationType:
     id: str
-    userId: UUID
+    subjectId: UUID
     type: str
     message: str
     status: str
@@ -25,7 +25,14 @@ class NotificationType:
 class EventTypeEnum(Enum):
     ORDER_PLACED = EventType.ORDER_PLACED
     ORDER_UPDATED = EventType.ORDER_UPDATED
-    ORDER_CANCELLED = EventType.ORDER_CANCELLED
+    ORDER_CANCELLED_BY_USER = EventType.ORDER_CANCELLED_BY_USER
+    ORDER_CANCELLED_INSUFFICIENT_INVENTORY = EventType.ORDER_CANCELLED_INSUFFICIENT_INVENTORY
+    ORDER_CANCELLED_INSUFFICIENT_FUNDS = EventType.ORDER_CANCELLED_INSUFFICIENT_FUNDS
+    ORDER_PROCESSED = EventType.ORDER_PROCESSED
+    ORDER_COMPLETED = EventType.ORDER_COMPLETED
+    INVENTORY_CREATED = EventType.INVENTORY_CREATED
+    INVENTORY_UPDATED = EventType.INVENTORY_UPDATED
+    INVENTORY_DELETED = EventType.INVENTORY_DELETED
     INVENTORY_RESERVED = EventType.INVENTORY_RESERVED
     INVENTORY_RESERVATION_FAILED = EventType.INVENTORY_RESERVATION_FAILED
     NOTIFICATION_SENT_SUCCESS = EventType.NOTIFICATION_SENT_SUCCESS
@@ -51,8 +58,8 @@ def get_all_notifications() -> List[NotificationType]:
 
 
 @strawberry.field
-def get_notifications_by_user(user_id: int) -> List[NotificationType]:
-    return fetch_notifications(user_id=user_id)
+def get_notifications_by_subject_id(subjectId: int) -> List[NotificationType]:
+    return fetch_notifications(subjectId=subjectId)
 
 
 @strawberry.field
@@ -63,7 +70,7 @@ def get_notifications_by_status(status: str) -> List[NotificationType]:
 @strawberry.type
 class Query:
     all_notifications: List[NotificationType] = get_all_notifications
-    notifications_by_user: List[NotificationType] = get_notifications_by_user
+    get_notifications_by_subject_id: List[NotificationType] = get_notifications_by_subject_id
     notifications_by_status: List[NotificationType] = get_notifications_by_status
 
 
@@ -72,7 +79,7 @@ class Mutation:
     @strawberry.mutation
     def create_notification(
         self,
-        user_id: str,
+        subject_id: str,
         message: str,
         event_type: str,
     ) -> NotificationType:
@@ -80,7 +87,7 @@ class Mutation:
             raise ValueError("Invalid event type provided")
 
         notification = Notification(
-            user_id=user_id,
+            subjectId=subject_id,
             message=message,
             type=event_type,
             status=NotificationStatus.UNREAD
@@ -89,12 +96,12 @@ class Mutation:
 
         return NotificationType(
             id=str(inserted["_id"]),
-            userId=inserted["user_id"],
+            subjectId=inserted["subjectId"],
             type=inserted["type"],
             message=inserted["message"],
             status=inserted["status"],
-            createdAt=inserted["created_at"],
-            updatedAt=inserted["updated_at"],
+            createdAt=inserted["createdAt"],
+            updatedAt=inserted["updatedAt"],
         )
 
 

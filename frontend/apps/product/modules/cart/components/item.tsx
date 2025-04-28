@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { MinusIcon, PlusIcon, X } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Spinner } from "../../components/native/icons";
-import { Button } from "../../components/ui/button";
-import { Card, CardHeader, CardContent } from "../../components/ui/card";
-import { getCountInCart, getLocalCart } from "../../lib/cart";
-import { useCartContext } from "../../providers/cart-provider";
-import { Badge } from "../../components/ui/badge";
-import { useAuthenticated } from "../../hooks/useAuthenticated";
+import { MinusIcon, PlusIcon, X } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { Spinner } from '../../components/native/icons';
+import { Button } from '../../components/ui/button';
+import { Card, CardHeader, CardContent } from '../../components/ui/card';
+import { getCountInCart, getLocalCart } from '../../lib/cart';
+import { useCartContext } from '../../providers/cart-provider';
+import { Badge } from '../../components/ui/badge';
+import { useAuthenticated } from '../../hooks/useAuthenticated';
 
 export const Item = ({ cartItem }) => {
   const { authenticated } = useAuthenticated();
@@ -28,44 +28,9 @@ export const Item = ({ cartItem }) => {
     return -1;
   }
 
-  async function getProduct() {
-    try {
-      const response = await fetch(`/api/product`, {
-        method: "POST",
-        body: JSON.stringify({ productId }),
-        cache: "no-store",
-        headers: {
-          "Content-Type": "application/json-string",
-        },
-      });
-
-      return await response.json();
-    } catch (error) {
-      console.error({ error });
-    }
-  }
-
   async function onAddToCart() {
     try {
       setFetchingCart(true);
-
-      if (authenticated) {
-        const response = await fetch(`/api/cart`, {
-          method: "POST",
-          body: JSON.stringify({
-            productId,
-            count: getCountInCart({ cartItems: cart?.items, productId }) + 1,
-          }),
-          cache: "no-store",
-          headers: {
-            "Content-Type": "application/json-string",
-          },
-        });
-
-        const json = await response.json();
-
-        dispatchCart(json);
-      }
 
       const localCart = getLocalCart() as any;
 
@@ -88,7 +53,7 @@ export const Item = ({ cartItem }) => {
       ) {
         localCart.items.push({
           productId,
-          product: await getProduct(),
+          product: cartItem,
           count: 1,
         });
 
@@ -107,14 +72,14 @@ export const Item = ({ cartItem }) => {
 
       if (authenticated) {
         const response = await fetch(`/api/cart`, {
-          method: "POST",
+          method: 'POST',
           body: JSON.stringify({
             productId,
             count: getCountInCart({ cartItems: cart?.items, productId }) - 1,
           }),
-          cache: "no-store",
+          cache: 'no-store',
           headers: {
-            "Content-Type": "application/json-string",
+            'Content-Type': 'application/json-string',
           },
         });
 
@@ -184,7 +149,7 @@ export const Item = ({ cartItem }) => {
             {count}
           </Button>
           <Button
-            disabled={productId == ""}
+            disabled={productId == ''}
             variant="outline"
             size="icon"
             onClick={onAddToCart}
@@ -224,7 +189,7 @@ export const Item = ({ cartItem }) => {
               alt="product image"
               fill
               sizes="(min-width: 1000px) 30vw, 50vw"
-              style={{ objectFit: "cover" }}
+              style={{ objectFit: 'cover' }}
             />
           </Link>
         </div>
@@ -237,7 +202,7 @@ export const Item = ({ cartItem }) => {
               src={product?.images[0]}
               alt="item image"
               fill
-              style={{ objectFit: "cover" }}
+              style={{ objectFit: 'cover' }}
             />
           </Link>
         </div>

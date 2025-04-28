@@ -16,7 +16,7 @@ var (
 
 func Init() error {
 	addr := os.Getenv("REDIS_ADDR")
-	//password := os.Getenv("REDIS_PASSWORD")
+	password := os.Getenv("REDIS_PASSWORD")
 
 	if addr == "" {
 		logger.Error("REDIS_ADDR is not set")
@@ -24,9 +24,9 @@ func Init() error {
 	}
 
 	client = redis.NewClient(&redis.Options{
-		Addr: addr,
-		//Password: password,
-		DB: 0,
+		Addr:     addr,
+		Password: password,
+		DB:       0,
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

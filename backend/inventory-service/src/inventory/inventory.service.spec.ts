@@ -5,7 +5,6 @@ import { EventBridge } from '../event-emitter/eventbridge/eventbridge';
 import { NotFoundException } from '@nestjs/common';
 import { EventType } from 'src/common/types';
 
-
 describe('InventoryService', () => {
   let service: InventoryService;
   let prisma: PrismaService;
@@ -45,14 +44,26 @@ describe('InventoryService', () => {
 
   describe('create', () => {
     it('should create inventory and emit event', async () => {
-      const input = { title: 'item', brand: "x", description: 'desc', images: [''], categories: ['stuff'], discount: 0, quantity: 10, price: 5 };
+      const input = {
+        title: 'item',
+        brand: 'x',
+        description: 'desc',
+        images: [''],
+        categories: ['stuff'],
+        discount: 0,
+        quantity: 10,
+        price: 5,
+      };
       const created = { id: '1', ...input };
 
       mockPrisma.inventory.create.mockResolvedValue(created);
 
       const result = await service.create(input);
       expect(result).toEqual(created);
-      expect(mockEB.emit).toHaveBeenCalledWith(created, EventType.InventoryCreated);
+      expect(mockEB.emit).toHaveBeenCalledWith(
+        created,
+        EventType.InventoryCreated,
+      );
     });
   });
 
@@ -68,7 +79,10 @@ describe('InventoryService', () => {
 
       const result = await service.update(id, updateData);
       expect(result).toEqual(updated);
-      expect(mockEB.emit).toHaveBeenCalledWith(updated, EventType.InventoryUpdated);
+      expect(mockEB.emit).toHaveBeenCalledWith(
+        updated,
+        EventType.InventoryUpdated,
+      );
     });
 
     it('should throw if inventory not found', async () => {
@@ -87,7 +101,10 @@ describe('InventoryService', () => {
 
       const result = await service.remove(id);
       expect(result).toEqual(inventory);
-      expect(mockEB.emit).toHaveBeenCalledWith(inventory, EventType.InventoryDeleted);
+      expect(mockEB.emit).toHaveBeenCalledWith(
+        inventory,
+        EventType.InventoryDeleted,
+      );
     });
 
     it('should throw if inventory not found', async () => {
@@ -98,7 +115,12 @@ describe('InventoryService', () => {
 
   describe('handleOrderCancelled', () => {
     it('should update inventory and emit event', async () => {
-      const item = { id: '1', productId: '1', quantity: 2, status: EventType.OrderCancelled };
+      const item = {
+        id: '1',
+        productId: '1',
+        quantity: 2,
+        status: EventType.OrderCancelledByUser,
+      };
       const inventory = { id: '1', quantity: 5 };
 
       mockPrisma.inventory.findUnique.mockResolvedValue(inventory);
@@ -111,19 +133,29 @@ describe('InventoryService', () => {
         data: { quantity: 7 },
       });
 
-      expect(mockEB.emit).toHaveBeenCalledWith({ productId: '1', quantity: 2 }, EventType.InventoryUpdated);
+      expect(mockEB.emit).toHaveBeenCalledWith(
+        { productId: '1', quantity: 2 },
+        EventType.InventoryUpdated,
+      );
     });
   });
 
   describe('handleOrderUpdated', () => {
     it('should update inventory and emit event', async () => {
-      const item = { id: 'order1', productId: '1', quantity: 2, status: EventType.OrderUpdated };
+      const item = {
+        id: 'order1',
+        productId: '1',
+        quantity: 2,
+        status: EventType.OrderUpdated,
+      };
       const inventory = { id: '1', quantity: 10 };
 
       mockPrisma.inventory.findUnique.mockResolvedValue(inventory);
       Object.defineProperty(service, 'client', {
         value: {
-          query: jest.fn().mockResolvedValue({ data: { order: { quantity: 1 } } }),
+          query: jest
+            .fn()
+            .mockResolvedValue({ data: { order: { quantity: 1 } } }),
         },
       });
 
@@ -136,13 +168,21 @@ describe('InventoryService', () => {
         data: { quantity: 11 },
       });
 
-      expect(mockEB.emit).toHaveBeenCalledWith({ productId: '1', quantity: 2 }, EventType.InventoryUpdated);
+      expect(mockEB.emit).toHaveBeenCalledWith(
+        { productId: '1', quantity: 2 },
+        EventType.InventoryUpdated,
+      );
     });
   });
 
   describe('handleOrderCreated', () => {
     it('should update inventory and emit reserved event', async () => {
-      const item = { id: '1', productId: '1', quantity: 2, status: EventType.OrderCancelled };
+      const item = {
+        id: '1',
+        productId: '1',
+        quantity: 2,
+        status: EventType.OrderPlaced,
+      };
       const inventory = { id: '1', quantity: 10 };
 
       mockPrisma.inventory.findUnique.mockResolvedValue(inventory);

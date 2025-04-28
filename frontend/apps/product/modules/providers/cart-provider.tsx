@@ -12,7 +12,7 @@ import { TCart } from '../types/index';
 const CartContext = createContext({
   cart: {
     items: [],
-  },
+  } as TCart,
   loading: false,
   refreshCart: () => {},
   dispatchCart: (cart: TCart) => {},

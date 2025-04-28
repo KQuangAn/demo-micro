@@ -1,11 +1,12 @@
 import { ModalProvider } from '../modules/providers/modal-provider';
 import { ToastProvider } from '../modules/providers/toast-provider';
 import { Inter } from 'next/font/google';
-
+import React from 'react';
 import './globals.css';
 import Header from '../modules/components/native/nav/parent';
 import Footer from '../modules/components/native/Footer';
 import ThemeProvider from '../modules/providers/theme-provider';
+import ApolloProviders from '../modules/providers/theme-provider copy';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -28,7 +29,7 @@ export default async function RootLayout({
           <ModalProvider />
           <Header />
           <div className="px-[1.4rem] md:px-[4rem] lg:px-[6rem] xl:px-[8rem] 2xl:px-[12rem]">
-            {children}
+            <ApolloProviders>{children}</ApolloProviders>
           </div>
           <Footer />
         </ThemeProvider>

@@ -129,7 +129,7 @@ export class InventoryService {
       const reason = `Error reserving inventory :${e}`;
       await this.eb.emit(
         { ...payload, reason },
-        EventType.InventoryReservationFailed,
+        EventType.InventoryUpdatedFailed,
       );
       throw new BadRequestException(`Error reserving inventory`, e);
     }
@@ -203,9 +203,9 @@ export class InventoryService {
         if (!res) {
           throw new BadRequestException(`Error updating inventory`);
         }
-
+        const { id } = res;
         await this.eb.emit(
-          { orderId: payload.id, ...res },
+          { orderId: payload.id, productId: id, ...res },
           EventType.InventoryReserved,
         );
 

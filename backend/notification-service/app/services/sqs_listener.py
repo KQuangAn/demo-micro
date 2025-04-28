@@ -14,29 +14,40 @@ def process_message(message):
         notification_data = json.loads(message["Body"])
         detail_type = notification_data.get("detail-type")
 
-        print(f"Processing message: {detail_type}")
+        print(f"Processing message: {message}")
 
         if (
-            detail_type in EventType.all_types
+            detail_type in EventType.all_types()
             and detail_type != EventType.NOTIFICATION_SENT_SUCCESS
             and detail_type != EventType.NOTIFICATION_SENT_FAILED
         ):
-            notification = Notification(
-                userId=notification_data["detail"].get("user_id"),
-                message=json.dumps(notification_data),
-                type=EventType.NOTIFICATION_SENT_SUCCESS,
-                status=NotificationStatus.UNREAD
-            )
+            # Handle different events: order and inventory
+            if detail_type in EventType.order_types():
+                notification = Notification(
+                    subjectId=notification_data["detail"].get("userID"),
+                    message=json.dumps(notification_data),
+                    type=detail_type,
+                    status=NotificationStatus.UNREAD
+                )
+                create_notification(notification)
 
-            create_notification(notification)
+            if detail_type in EventType.inventory_types():
+                notification = Notification(
+                    subjectId=notification_data["detail"].get("id"),
+                    message=json.dumps(notification_data),
+                    type=detail_type,
+                    status=NotificationStatus.UNREAD
+                )
+                create_notification(notification)
 
             print(f"Handled event type: {detail_type}")
+
 
     except Exception as e:
         print(f"Error processing message: {e}")
         try:
             notification = Notification(
-                userId=notification_data.get("detail", {}).get("user_id", "unknown"),
+                subjectId=notification_data.get("detail", {}).get("id", "unknown"),
                 message=str(notification_data),
                 type=EventType.NOTIFICATION_SENT_FAILED,
                 status=NotificationStatus.UNREAD

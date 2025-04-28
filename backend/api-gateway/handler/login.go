@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"time"
 
 	"api-gateway/models"
@@ -15,7 +16,7 @@ import (
 )
 
 var (
-	mySigningKey = []byte("secret")
+	mySigningKey = []byte(os.Getenv("JWT_SECRET"))
 	ctx          = context.Background()
 	logger       = log.Noop{}
 )
@@ -94,7 +95,8 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Logged in successfully"})
+	json.NewEncoder(w).Encode(map[string]string{"message": "Logged in successfully",
+		"token": token})
 }
 
 func TokenValid(next http.Handler) http.Handler {

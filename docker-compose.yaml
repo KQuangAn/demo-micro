@@ -18,18 +18,20 @@ services:
       context: ./backend/api-gateway
     ports:
       - '8080:8080'
+    dns:
+      - 10.0.2.20
     env_file:
       - ./backend/api-gateway/.env
     environment:
       - PORT=8080
       - AWS_ENDPOINT=http://localstack:4566
       - AWS_REGION=http://localstack:4566
-      - ORDER_URL=http://order-service:9001/graphql 
+      - ORDER_URL=http://order-service:9001/graphql
       - INVENTORY_URL=http://inventory-service:9000/graphql
       - NOTIFICATION_URL=http://notification-service:9002/graphql
       - NOTIFICATION_GET=http://notification-service:9002/schema
       - REDIS_ADDR=redis:6379
-      - REDIS_PASSWORD=pass 
+      - REDIS_PASSWORD=pass
     depends_on:
       - order-service
       - notification-service
@@ -38,6 +40,7 @@ services:
       - localstack
     networks:
       - app-network
+
   order-service:
     build:
       context: ./backend/order-service
@@ -164,7 +167,12 @@ services:
       app-network:
         ipv4_address: 10.0.2.20
     post_start:
-      - command: ['sh', '-c', 'ls -la /scripts && chmod +x /scripts/concurent.sh && /scripts/concurent.sh && exec "$@"']
+      - command:
+          [
+            'sh',
+            '-c',
+            'ls -la /scripts && chmod +x /scripts/concurent.sh && /scripts/concurent.sh && exec "$@"',
+          ]
         user: root
     healthcheck:
       test:
@@ -179,8 +187,12 @@ services:
     image: redis:latest
     ports:
       - '6379:6379'
+    networks:
+      - app-network
     volumes:
       - redis-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: ['redis-server', '/usr/local/etc/redis/redis.conf']
     environment:
       - REDIS_PASSWORD=pass
 volumes:

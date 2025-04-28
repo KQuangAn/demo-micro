@@ -23,7 +23,7 @@ export class InventoryMessageHandler implements IMessageHandler {
           return await this.inventoryService.handleOrderUpdated(payload);
         }
       }
-      case EventType.OrderCancelled: {
+      case EventType.OrderCancelledByUser: {
         if (isOrders(payload)) {
           return await this.inventoryService.handleOrderCancelled(payload);
         }

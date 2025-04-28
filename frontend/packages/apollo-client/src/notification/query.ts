@@ -1,6 +1,6 @@
 import { gql } from '@apollo/client';
 
-export const GET_NOTIFICATION_ITEMS_BY_USER_ID = (userId) => gql`
+export const GET_NOTIFICATION_ITEMS_BY_USER_ID = (userId: string) => gql`
   query {
     notificationsByUser(userId: ${userId}) {
       id
@@ -13,9 +13,9 @@ export const GET_NOTIFICATION_ITEMS_BY_USER_ID = (userId) => gql`
     }
   }
 `;
-export const GET_NOTIFICATION_ITEMS_BY_STATUS = (status) => gql`
+export const GET_NOTIFICATION_ITEMS_BY_STATUS = (status: any) => gql`
   query {
-    notificationsByUser(userId: ${userId}) {
+    notificationsByStatus(status: ${status}) {
       id
       userId
       type
@@ -26,8 +26,6 @@ export const GET_NOTIFICATION_ITEMS_BY_STATUS = (status) => gql`
     }
   }
 `;
-
-
 
 export const GET_ALL_NOTIFICATIONS = gql`
   query {

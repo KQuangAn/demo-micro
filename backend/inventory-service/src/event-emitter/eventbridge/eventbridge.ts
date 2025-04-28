@@ -25,18 +25,11 @@ export class EventBridge implements IEventEmitter {
     });
   }
 
-  onModuleInit() {
-    console.log('try emit')
-    const event = createEvent({
-      type: EventType.InventoryReserved,
-      payload: "lol",
-    });
-    this.emit(event)
-  }
   async emit(event: PutEventsRequestEntry[] | PutEventsRequestEntry) {
     const entries = Array.isArray(event) ? event : [event];
 
-    console.log(entries, 'entries')
+    console.log(entries, 'entries');
+
     const command = new PutEventsCommand({
       Entries: entries,
     });

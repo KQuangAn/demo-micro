@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"orderservice/graph/model"
 	"orderservice/internal/models"
 	"orderservice/internal/services"
 	"orderservice/internal/utils"
@@ -50,19 +49,27 @@ func init() {
 
 func handleMessage(message *types.Message, msgValidator *validator.Validator, orderService *services.OrderService) {
 	var event models.EventBridgeMessage
-	log.Print("Received message", message.Body)
+	log.Print("Received message", *message.Body)
 
-	valid := msgValidator.Validate(message, &event)
+	valid := msgValidator.ValidateEvent(message, &event)
 
 	if !valid {
 		return
 	}
 
 	ctx := context.Background()
+
 	switch event.DetailType {
 	case enums.EVENT_TYPE.InventoryReserved.String():
+		detail := validator.ValidateModel(msgValidator, event.Detail, &models.InventoryReservedEventDetail{})
+		if detail == nil {
+			log.Println("Failed to validate event", enums.EVENT_TYPE.InventoryReserved.String())
+			return
+		}
+
 		log.Println("InventoryReserved")
-		order, err := orderService.UpdateOrder(ctx, event.Detail.ID, event.Detail.ProductID, event.Detail.Quantity, model.OrderStatus(model.OrderStatusProcessing.String()))
+		order, err := orderService.HandleInventoryReservedEvent(ctx, detail.OrderID, detail.ProductID,
+			detail.Quantity)
 		if err != nil {
 			fmt.Printf("Error updating order: %v\n", err)
 		} else {
@@ -70,8 +77,13 @@ func handleMessage(message *types.Message, msgValidator *validator.Validator, or
 		}
 
 	case enums.EVENT_TYPE.InventoryReservationFailed.String():
-		log.Println("InventoryReservedfailed")
-		order, err := orderService.CancelOrder(ctx, event.Detail.ID)
+		detail := validator.ValidateModel(msgValidator, event.Detail, &models.InventoryReservedFailEventDetail{})
+		if detail == nil {
+			log.Println("Failed to validate event", enums.EVENT_TYPE.InventoryReserved.String())
+			return
+		}
+
+		order, err := orderService.CancelOrderInsufficentInventory(ctx, detail.OrderID)
 		if err != nil {
 			fmt.Printf("Error cancelling order: %v\n", err)
 		} else {
@@ -79,13 +91,20 @@ func handleMessage(message *types.Message, msgValidator *validator.Validator, or
 		}
 	case enums.EVENT_TYPE.NotificationSentSuccess.String():
 		log.Println("NotificationSentSuccess")
-		order, err := orderService.UpdateOrder(ctx, event.Detail.ID, event.Detail.ProductID, event.Detail.Quantity, model.OrderStatus(model.OrderStatusCompleted.String()))
+		detail := validator.ValidateModel(msgValidator, event.Detail, &models.NotificationEventDetail{})
+		if detail == nil {
+			log.Println("Failed to validate event", enums.EVENT_TYPE.InventoryReserved.String())
+			return
+		}
+		order, err := orderService.HandleInventoryReservedFailedEvent(ctx, detail.ID, detail.ProductID,
+			detail.Quantity)
 		if err != nil {
 			fmt.Printf("Error updating order: %v\n", err)
 		} else {
 			fmt.Printf("Order updated successfully: %+v\n", order)
 		}
-
+	default:
+		log.Printf("Unhandled event type: %s", event.DetailType)
 	}
 }
 
@@ -134,14 +153,11 @@ func StartSQSConsumer(queueURL string, orderService *services.OrderService) {
 		}
 	}()
 
-	// Wait for interrupt
 	<-sigs
 	log.Println("Shutdown signal received. Cleaning up...")
 
-	// Stop receiving messages
 	cancel()
 
-	// Close job queue and wait for workers
 	close(jobs)
 	wg.Wait()
 

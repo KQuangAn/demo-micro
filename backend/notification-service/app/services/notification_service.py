@@ -3,12 +3,12 @@ from app.constant import EventType
 from app.models import Notification
 from app.db import db
 
-def fetch_notifications(userId: int = None, status: str = None):
+def fetch_notifications(subjectId: int = None, status: str = None):
     try:
         query_filter = {}
         
-        if userId is not None:
-            query_filter["user_id"] = userId
+        if subjectId is not None:
+            query_filter["subjectId"] = subjectId
         
         if status is not None:
             query_filter["status"] = status
@@ -19,7 +19,7 @@ def fetch_notifications(userId: int = None, status: str = None):
         notifications_list = [
             Notification(
                 id=str(notification["_id"]), 
-                userId=notification["user_id"], 
+                subjectId=notification["subjectId"], 
                 type=notification["type"],
                 message=notification.get("message"),
                 status=notification.get("status"),
@@ -38,7 +38,7 @@ def create_notification(notification: Notification):
         notif_dict = notification.to_dict()
         result = db.notifications.insert_one(notif_dict)
         notif_dict["_id"] = str(result.inserted_id)
-        print(f"Notification created for user {notification.userId}")
+        print(f"Notification created for subject {notification.subjectId}")
         return notif_dict
     except Exception as e:
         print(f"Failed to create notification: {e}")

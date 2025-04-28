@@ -3,10 +3,11 @@ from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from typing import Optional
 from app.constant import NotificationStatus
+from bson import Binary
 
 
 class Notification(BaseModel):
-    userId: uuid.UUID = Field(alias="user_id", default_factory=uuid.uuid4)
+    subjectId: uuid.UUID = Field(alias="subjectId")
     type: str
     message: Optional[str] = None
     status: NotificationStatus
@@ -15,7 +16,7 @@ class Notification(BaseModel):
 
     def to_dict(self):
         return {
-            "user_id": self.userId,
+            "subjectId": Binary(self.subjectId.bytes),
             "type": self.type,
             "message": self.message,
             "status": self.status,

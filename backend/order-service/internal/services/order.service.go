@@ -153,12 +153,144 @@ func (s *OrderService) CancelOrder(ctx context.Context, id string) (*model.Order
 
 	orderCancelledEvent := &ebTypes.PutEventsRequestEntry{
 		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
-		DetailType:   aws.String(enums.EVENT_TYPE.OrderCancelled.String()),
+		DetailType:   aws.String(enums.EVENT_TYPE.OrderCancelledByUser.String()),
 		Detail:       aws.String(string(detailJSON)),
 		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
 	}
 
 	err = eventbridge.SendEvent(orderCancelledEvent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send order event to EventBridge: %v", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %v", err)
+	}
+
+	return &updatedOrder, nil
+}
+
+func (s *OrderService) CancelOrderInsufficentInventory(ctx context.Context, id string) (*model.Order, error) {
+	tx, err := s.repo.BeginTransaction(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %v", err)
+	}
+	defer tx.Rollback(ctx)
+
+	order, err := s.repo.GetOrderByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("order not found: %v", err)
+	}
+
+	order.Status = model.OrderStatus(model.OrderStatusCancelled.String())
+
+	updatedOrder, err := s.repo.UpdateOrder(ctx, tx, *order)
+	if err != nil {
+		return nil, fmt.Errorf("failed to cancel order: %v", err)
+	}
+
+	detailJSON, err := json.Marshal(updatedOrder)
+	if err != nil {
+		log.Fatalf("failed to marshal order detail: %v", err)
+		return nil, err
+	}
+
+	orderCancelledEvent := &ebTypes.PutEventsRequestEntry{
+		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
+		DetailType:   aws.String(enums.EVENT_TYPE.OrderCancelledInsufficentInventory.String()),
+		Detail:       aws.String(string(detailJSON)),
+		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
+	}
+
+	err = eventbridge.SendEvent(orderCancelledEvent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send order event to EventBridge: %v", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %v", err)
+	}
+
+	return &updatedOrder, nil
+}
+
+func (s *OrderService) HandleInventoryReservedEvent(ctx context.Context, id string, productID string, quantity int32) (*model.Order, error) {
+	tx, err := s.repo.BeginTransaction(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %v", err)
+	}
+	defer tx.Rollback(ctx)
+
+	order, err := s.repo.GetOrderByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("order not found: %v", err)
+	}
+
+	order.Status = model.OrderStatus(model.OrderStatusProcessing.String())
+
+	updatedOrder, err := s.repo.UpdateOrder(ctx, tx, *order)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update order: %v", err)
+	}
+
+	detailJSON, err := json.Marshal(updatedOrder)
+	if err != nil {
+		log.Fatalf("failed to marshal order detail: %v", err)
+		return nil, err
+	}
+
+	event := &ebTypes.PutEventsRequestEntry{
+		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
+		DetailType:   aws.String(enums.EVENT_TYPE.OrderProcessed.String()),
+		Detail:       aws.String(string(detailJSON)),
+		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
+	}
+
+	err = eventbridge.SendEvent(event)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send order event to EventBridge: %v", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %v", err)
+	}
+
+	return &updatedOrder, nil
+}
+
+func (s *OrderService) HandleInventoryReservedFailedEvent(ctx context.Context, id string, productID string, quantity int32) (*model.Order, error) {
+	tx, err := s.repo.BeginTransaction(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %v", err)
+	}
+	defer tx.Rollback(ctx)
+
+	order, err := s.repo.GetOrderByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("order not found: %v", err)
+	}
+
+	order.Status = model.OrderStatus(model.OrderStatusCancelled.String())
+
+	updatedOrder, err := s.repo.UpdateOrder(ctx, tx, *order)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update order: %v", err)
+	}
+
+	detailJSON, err := json.Marshal(updatedOrder)
+	if err != nil {
+		log.Fatalf("failed to marshal order detail: %v", err)
+		return nil, err
+	}
+
+	orderUpdatedEvent := &ebTypes.PutEventsRequestEntry{
+		Source:       aws.String(os.Getenv("EVENT_BRIDGE_EVENT_SOURCE")),
+		DetailType:   aws.String(enums.EVENT_TYPE.OrderCancelledInsufficentInventory.String()),
+		Detail:       aws.String(string(detailJSON)),
+		EventBusName: aws.String(os.Getenv("EVENT_BRIDGE_BUS_NAME")),
+	}
+
+	err = eventbridge.SendEvent(orderUpdatedEvent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send order event to EventBridge: %v", err)
 	}

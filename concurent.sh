@@ -1,5 +1,6 @@
 #!/bin/bash
-set -e
+set +e #ignore err 
+
 export AWS_REGION="ap-southeast-1"
 export AWS_DEFAULT_REGION="ap-southeast-1"
 export AWS_ACCESS_KEY_ID="test"
@@ -63,6 +64,17 @@ aws --endpoint-url=http://localhost:4566 events put-rule \
     }" \
     --description "Capture OrderPlaced events" --region "${REGION}" &
 
+
+aws --endpoint-url=http://localhost:4566 events put-rule \
+    --name "order_updated" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --event-pattern "{
+      \"source\": [\"${ORDER_SOURCE}\"],
+      \"detail-type\": [\"order_updated\"]
+    }" \
+    --description "Capture OrderUpdated events" --region "${REGION}" &
+
+
 aws --endpoint-url=http://localhost:4566 events put-rule \
     --name "order_processing" \
     --event-bus-name "${EVENT_BUS_NAME}" \
@@ -72,14 +84,78 @@ aws --endpoint-url=http://localhost:4566 events put-rule \
     }" \
     --description "Capture order_processing events" --region "${REGION}" &
 
+
 aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "order_cancelled" \
+    --name "order_cancelled_by_user" \
     --event-bus-name "${EVENT_BUS_NAME}" \
     --event-pattern "{
       \"source\": [\"${ORDER_SOURCE}\"],
-      \"detail-type\": [\"order_cancelled\"]
+      \"detail-type\": [\"order_cancelled_by_user\"]
     }" \
-    --description "Capture OrderCanceled events" --region "${REGION}" &
+    --description "Capture OrderCancelledByUser events" --region "${REGION}" &
+
+aws --endpoint-url=http://localhost:4566 events put-rule \
+    --name "order_cancelled_insufficient_inventory" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --event-pattern "{
+      \"source\": [\"${ORDER_SOURCE}\"],
+      \"detail-type\": [\"order_cancelled_insufficient_inventory\"]
+    }" \
+    --description "Capture OrderCancelledInsufficientInventory events" --region "${REGION}" &
+
+aws --endpoint-url=http://localhost:4566 events put-rule \
+    --name "order_cancelled_insufficient_funds" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --event-pattern "{
+      \"source\": [\"${ORDER_SOURCE}\"],
+      \"detail-type\": [\"order_cancelled_insufficient_funds\"]
+    }" \
+    --description "Capture OrderCancelledInsufficientFunds events" --region "${REGION}" &
+
+aws --endpoint-url=http://localhost:4566 events put-rule \
+    --name "order_processed" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --event-pattern "{
+      \"source\": [\"${ORDER_SOURCE}\"],
+      \"detail-type\": [\"order_processed\"]
+    }" \
+    --description "Capture OrderProcessed events" --region "${REGION}" &
+
+aws --endpoint-url=http://localhost:4566 events put-rule \
+    --name "order_completed" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --event-pattern "{
+      \"source\": [\"${ORDER_SOURCE}\"],
+      \"detail-type\": [\"order_completed\"]
+    }" \
+    --description "Capture OrderCompleted events" --region "${REGION}" &
+
+aws --endpoint-url=http://localhost:4566 events put-rule \
+    --name "inventory_created" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --event-pattern "{
+      \"source\": [\"${INVENTORY_SOURCE}\"],
+      \"detail-type\": [\"inventory_created\"]
+    }" \
+    --description "Capture InventoryCreated events" --region "${REGION}" &
+
+aws --endpoint-url=http://localhost:4566 events put-rule \
+    --name "inventory_updated" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --event-pattern "{
+      \"source\": [\"${INVENTORY_SOURCE}\"],
+      \"detail-type\": [\"inventory_updated\"]
+    }" \
+    --description "Capture InventoryUpdated events" --region "${REGION}" &
+
+aws --endpoint-url=http://localhost:4566 events put-rule \
+    --name "inventory_deleted" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --event-pattern "{
+      \"source\": [\"${INVENTORY_SOURCE}\"],
+      \"detail-type\": [\"inventory_deleted\"]
+    }" \
+    --description "Capture InventoryDeleted events" --region "${REGION}" &
 
 aws --endpoint-url=http://localhost:4566 events put-rule \
     --name "inventory_reserved" \
@@ -136,9 +212,44 @@ aws --endpoint-url=http://localhost:4566 events put-targets \
     --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" "Id"="2","Arn"="${TARGET_NOTIFICATION_ARN}" &
 
 aws --endpoint-url=http://localhost:4566 events put-targets \
-    --rule "order_cancelled" \
+    --rule "order_cancelled_by_user" \
     --event-bus-name "${EVENT_BUS_NAME}" \
     --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" "Id"="2","Arn"="${TARGET_NOTIFICATION_ARN}" &
+
+aws --endpoint-url=http://localhost:4566 events put-targets \
+    --rule "order_cancelled_insufficient_inventory" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" "Id"="2","Arn"="${TARGET_NOTIFICATION_ARN}" &
+
+aws --endpoint-url=http://localhost:4566 events put-targets \
+    --rule "order_cancelled_insufficient_funds" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" "Id"="2","Arn"="${TARGET_NOTIFICATION_ARN}" &
+
+aws --endpoint-url=http://localhost:4566 events put-targets \
+    --rule "order_processed" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --targets "Id"="1","Arn"="${TARGET_NOTIFICATION_ARN}" &
+
+aws --endpoint-url=http://localhost:4566 events put-targets \
+    --rule "order_completed" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --targets "Id"="1","Arn"="${TARGET_NOTIFICATION_ARN}" &
+
+aws --endpoint-url=http://localhost:4566 events put-targets \
+    --rule "inventory_created" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" &
+
+aws --endpoint-url=http://localhost:4566 events put-targets \
+    --rule "inventory_updated" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" &
+
+aws --endpoint-url=http://localhost:4566 events put-targets \
+    --rule "inventory_deleted" \
+    --event-bus-name "${EVENT_BUS_NAME}" \
+    --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" &
 
 aws --endpoint-url=http://localhost:4566 events put-targets \
     --rule "inventory_reserved" \

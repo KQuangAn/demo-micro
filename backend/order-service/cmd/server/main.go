@@ -7,12 +7,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"orderservice/graph"
 	db "orderservice/internal/db"
 	"orderservice/internal/repository"
 	"orderservice/internal/services"
 	"orderservice/internal/sqs"
+	"orderservice/internal/utils"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
@@ -24,7 +26,7 @@ import (
 func graphqlHandler(orderService *services.OrderService) http.HandlerFunc {
 	// NewExecutableSchema and Config are in the generated.go file
 	// Resolver is in the resolver.go file
-
+	TIMEOUT := utils.GetEnv("REQUEST_TIMEOUT", 30)
 	h := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{OrderService: orderService}}))
 	h.AddTransport(transport.POST{})
 
@@ -33,6 +35,11 @@ func graphqlHandler(orderService *services.OrderService) http.HandlerFunc {
 	h.Use(extension.Introspection{})
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), time.Duration(TIMEOUT)*time.Second)
+		defer cancel()
+
+		r = r.WithContext(ctx)
+
 		r.Header.Set("Content-Type", "application/json")
 		h.ServeHTTP(w, r)
 	}
@@ -100,10 +107,7 @@ func main() {
 	http.HandleFunc("/graphql", graphqlHandler(orderService))
 
 	// Start the server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "9001"
-	}
+	port := utils.GetEnv("PORT", "9001")
 	fmt.Printf("Starting server on :%s\n", port)
 	err = http.ListenAndServe(":"+port, nil)
 	if err != nil {

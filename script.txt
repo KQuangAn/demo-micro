@@ -1,5 +1,9 @@
  docker-compose up -d --force-recreate --no-deps --build inventory-service
 
+curl --location 'http://localhost:8080/query' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImEiLCJleHAiOjE3NDYxNTA5NjN9.6T46XLDkTC-Cz-CGevk-iBEq2WViGtezQicUFx_qHeg' \
+--data '{"query":"mutation CreateInventory {\r\n  createInventory(createInventoryInput: {\r\n    title: \"New Product\"\r\n    brand: \"Brand A\"\r\n    description: \"Description of the new product.\"\r\n    images: [\"image1.jpg\", \"image2.jpg\"]\r\n    categories: [\"Category1\", \"Category2\"]\r\n    quantity: 100\r\n    price: 29.99\r\n    discount: 5.00\r\n  }) {\r\n    id\r\n    title\r\n    price\r\n    quantity\r\n  }\r\n}\r\n","variables":{"userID":"e7cf02af-515d-42b2-bb6a-283bd3bf92d2","productId":"e7cf02af-515d-42b2-bb6a-283bd3bf92d2","quantity":2}}'
 
 # 🔧 Push Event: order_placed
 aws --endpoint-url=http://localhost:4566 events put-events --entries "[{

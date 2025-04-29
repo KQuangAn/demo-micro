@@ -7,6 +7,7 @@ from app.services.notification_service import (
 )
 from app.constant import EventType , NotificationStatus
 from app.models import Notification
+from app.services.eventbridge_service import send_event_to_eventbridge
 
 
 def process_message(message):
@@ -30,7 +31,7 @@ def process_message(message):
                     status=NotificationStatus.UNREAD
                 )
                 create_notification(notification)
-
+                send_event_to_eventbridge(notification.to_dict(), EventType.NOTIFICATION_SENT_SUCCESS)
             if detail_type in EventType.inventory_types():
                 notification = Notification(
                     subjectId=notification_data["detail"].get("id"),
@@ -39,9 +40,9 @@ def process_message(message):
                     status=NotificationStatus.UNREAD
                 )
                 create_notification(notification)
-
+                send_event_to_eventbridge(notification.to_dict(), EventType.NOTIFICATION_SENT_SUCCESS)
             print(f"Handled event type: {detail_type}")
-
+            return True
 
     except Exception as e:
         print(f"Error processing message: {e}")
@@ -53,8 +54,10 @@ def process_message(message):
                 status=NotificationStatus.UNREAD
             )
             create_notification(notification)
+            send_event_to_eventbridge(notification.to_dict(), EventType.NOTIFICATION_SENT_FAILED)
         except Exception as nested_e:
             print(f"Failed to create failure notification: {nested_e}")
+    return False
 
 
 def receive_messages():
@@ -63,8 +66,8 @@ def receive_messages():
         messages = get_sqs_messages()
         if messages:
             for message in messages:
-                process_message(message)
-                delete_message(message["ReceiptHandle"])
+                if process_message(message):
+                    delete_message(message["ReceiptHandle"])
         else:
             print("No new messages. Waiting...")
             sleep(5)

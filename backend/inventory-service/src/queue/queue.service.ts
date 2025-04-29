@@ -28,11 +28,10 @@ export class QueueService implements OnModuleInit, IQueueService {
           QueueMessage.parse(body);
           //process
           await this.messageHandler.process(body);
-          //delet
+          //delete if process with no error
+          await this.client.delete(message);
         } catch (err) {
           console.error('Error processing message', err);
-        } finally {
-          await this.client.delete(message);
         }
       }
     }

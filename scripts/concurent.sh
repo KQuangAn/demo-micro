@@ -15,6 +15,7 @@ done
 EVENT_BUS_NAME="evbus"
 REGION="ap-southeast-1"
 
+
 # Create EventBridge Event Bus if it doesn't exist
 if ! aws --endpoint-url=http://localhost:4566 events list-event-buses | grep -q "$EVENT_BUS_NAME"; then
     echo "Creating event bus $EVENT_BUS_NAME..."
@@ -42,10 +43,14 @@ echo "Orders DLQ URL: $ORDERS_DLQ_URL"
 echo "Inventory DLQ URL: $INVENTORY_DLQ_URL"
 echo "Notification DLQ URL: $NOTIFICATION_DLQ_URL"
 
-aws --endpoint-url=http://localhost:4566 sqs set-queue-attributes --queue-url "$ORDERS_DLQ_URL" --attributes "{\"RedrivePolicy\":\"{\\\"maxReceiveCount\\\":\\\"5\\\", \\\"deadLetterTargetArn\\\":\\\"$ORDERS_DLQ_URL\\\"}\"}"
-aws --endpoint-url=http://localhost:4566 sqs set-queue-attributes --queue-url "$INVENTORY_DLQ_URL" --attributes "{\"RedrivePolicy\":\"{\\\"maxReceiveCount\\\":\\\"5\\\", \\\"deadLetterTargetArn\\\":\\\"$INVENTORY_DLQ_URL\\\"}\"}"
-aws --endpoint-url=http://localhost:4566 sqs set-queue-attributes --queue-url "$NOTIFICATION_DLQ_URL" --attributes "{\"RedrivePolicy\":\"{\\\"maxReceiveCount\\\":\\\"5\\\", \\\"deadLetterTargetArn\\\":\\\"$NOTIFICATION_DLQ_URL\\\"}\"}"
 
+MAX_RECEIVE_COUNT="5"
+REDRIVE_POLICY_TEMPLATE="{\"maxReceiveCount\":\"$MAX_RECEIVE_COUNT\", \"deadLetterTargetArn\":\"%s\"}"
+
+# Set attributes for the main queues with the redrive policy
+aws --endpoint-url=http://localhost:4566 sqs set-queue-attributes --queue-url "$ORDERS_DLQ_URL" --attributes "{\"RedrivePolicy\":\"$(printf "$REDRIVE_POLICY_TEMPLATE" "$ORDERS_DLQ_URL")\"}"
+aws --endpoint-url=http://localhost:4566 sqs set-queue-attributes --queue-url "$INVENTORY_DLQ_URL" --attributes "{\"RedrivePolicy\":\"$(printf "$REDRIVE_POLICY_TEMPLATE" "$INVENTORY_DLQ_URL")\"}"
+aws --endpoint-url=http://localhost:4566 sqs set-queue-attributes --queue-url "$NOTIFICATION_DLQ_URL" --attributes "{\"RedrivePolicy\":\"$(printf "$REDRIVE_POLICY_TEMPLATE" "$NOTIFICATION_DLQ_URL")\"}"
 # Wait for all SQS queue creation to finish
 wait
 

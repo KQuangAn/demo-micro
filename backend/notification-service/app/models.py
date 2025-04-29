@@ -3,7 +3,6 @@ from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from typing import Optional
 from app.constant import NotificationStatus
-from bson import Binary
 
 
 class Notification(BaseModel):
@@ -16,12 +15,12 @@ class Notification(BaseModel):
 
     def to_dict(self):
         return {
-            "subjectId": Binary(self.subjectId.bytes),
+            "subjectId": str(self.subjectId),
             "type": self.type,
             "message": self.message,
             "status": self.status,
-            "created_at": self.createdAt,
-            "updated_at": self.updatedAt,
+            "created_at": self.createdAt.isoformat(),
+            "updated_at": self.updatedAt.isoformat(),
         }
 
     class Config:

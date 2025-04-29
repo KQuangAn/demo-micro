@@ -10,18 +10,16 @@ import {
 import { isVariableValid } from '../../lib/utils';
 import { useCartContext } from '../../providers/cart-provider';
 import { Separator } from '../../components/ui/separator';
-import { client, CREATE_ORDER, GET_ALL_ORDERS } from '@repo/apollo-client';
-import { useMutation, useQuery } from '@apollo/client';
+import { client, CREATE_ORDER } from '@repo/apollo-client';
+import { useMutation } from '@apollo/client';
 
 const tempUserid = '550e8400-e29b-41d4-a716-446655440004';
 
 export function Receipt() {
   //const { authenticated } = useAuthenticated();
   const { loading, cart, refreshCart, dispatchCart } = useCartContext();
-  const [createOrder, { data, loading: loadingMutation, error }] =
-    useMutation(CREATE_ORDER);
-
-  const order = useQuery(GET_ALL_ORDERS);
+  // const [createOrder, { data, loading: loadingMutation, error }] =
+  //   useMutation(CREATE_ORDER);
 
   const handleCheckout = async () => {
     const ordersToCreate = cart.items.map((item) => ({
@@ -31,26 +29,25 @@ export function Receipt() {
     }));
     console.log(ordersToCreate);
     try {
-      const createOrderPromises = ordersToCreate.map((order) =>
-        createOrder({ variables: order })
-      );
-      // const result = await client.mutate({
-      //   mutation: CREATE_ORDER,
-      //   variables: {
-      //     userID: tempUserid,
-      //     productId: ordersToCreate[0]?.productId,
-      //     quantity: ordersToCreate[0]?.quantity,
-      //   },
-      // });
+      // const createOrderPromises = ordersToCreate.map((order) =>
+      //   createOrder({ variables: order })
+      // );
+      const result = await client.mutate({
+        mutation: CREATE_ORDER,
+        variables: {
+          userID: tempUserid,
+          productId: ordersToCreate[0]?.productId,
+          quantity: ordersToCreate[0]?.quantity,
+        },
+      });
 
-      const result = await Promise.all(createOrderPromises);
+      //const result = await Promise.all(createOrderPromises);
       console.log('Batch order creation results:', result);
     } catch (error) {
       console.error('Error creating orders in batch:', error);
     }
   };
-  console.log(order.data, order.error);
-  console.log(data, loadingMutation, error);
+  //console.log(data, loadingMutation, error);
   function calculatePayableCost() {
     let totalAmount = 0,
       discountAmount = 0;

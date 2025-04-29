@@ -44,11 +44,9 @@ def create_notification(notification: Notification):
         print(f"Failed to create notification: {e}")
         raise
 
-def create_failure_notification(original_event, error_message):
+def create_failure_notification(notification: Notification):
     try:
-        create_notification(
-            {"error": error_message, "original_event": original_event},
-            EventType.NOTIFICATION_SENT_FAILED,
-        )
+        
+        create_notification(notification)
     except Exception as notification_error:
         print(f"Failed to create failure notification: {notification_error}")

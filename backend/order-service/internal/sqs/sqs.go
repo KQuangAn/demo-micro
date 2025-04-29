@@ -2,6 +2,7 @@ package sqs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"orderservice/internal/models"
@@ -47,14 +48,14 @@ func init() {
 
 }
 
-func handleMessage(message *types.Message, msgValidator *validator.Validator, orderService *services.OrderService) {
+func handleMessage(message *types.Message, msgValidator *validator.Validator, orderService *services.OrderService) error {
 	var event models.EventBridgeMessage
 	log.Print("Received message", *message.Body)
 
 	valid := msgValidator.ValidateEvent(message, &event)
 
 	if !valid {
-		return
+		return fmt.Errorf("invalid event")
 	}
 
 	ctx := context.Background()
@@ -63,8 +64,7 @@ func handleMessage(message *types.Message, msgValidator *validator.Validator, or
 	case enums.EVENT_TYPE.InventoryReserved.String():
 		detail := validator.ValidateModel(msgValidator, event.Detail, &models.InventoryReservedEventDetail{})
 		if detail == nil {
-			log.Println("Failed to validate event", enums.EVENT_TYPE.InventoryReserved.String())
-			return
+			return fmt.Errorf("Failed to validate event", enums.EVENT_TYPE.InventoryReserved.String())
 		}
 
 		log.Println("InventoryReserved")
@@ -79,8 +79,7 @@ func handleMessage(message *types.Message, msgValidator *validator.Validator, or
 	case enums.EVENT_TYPE.InventoryReservationFailed.String():
 		detail := validator.ValidateModel(msgValidator, event.Detail, &models.InventoryReservedFailEventDetail{})
 		if detail == nil {
-			log.Println("Failed to validate event", enums.EVENT_TYPE.InventoryReserved.String())
-			return
+			return fmt.Errorf("Failed to validate event", enums.EVENT_TYPE.InventoryReservationFailed.String())
 		}
 
 		order, err := orderService.CancelOrderInsufficentInventory(ctx, detail.OrderID)
@@ -93,19 +92,28 @@ func handleMessage(message *types.Message, msgValidator *validator.Validator, or
 		log.Println("NotificationSentSuccess")
 		detail := validator.ValidateModel(msgValidator, event.Detail, &models.NotificationEventDetail{})
 		if detail == nil {
-			log.Println("Failed to validate event", enums.EVENT_TYPE.InventoryReserved.String())
-			return
+			return fmt.Errorf("Failed to validate event", enums.EVENT_TYPE.NotificationSentSuccess.String())
 		}
-		order, err := orderService.HandleInventoryReservedFailedEvent(ctx, detail.ID, detail.ProductID,
-			detail.Quantity)
-		if err != nil {
-			fmt.Printf("Error updating order: %v\n", err)
-		} else {
-			fmt.Printf("Order updated successfully: %+v\n", order)
+		log.Println(*detail)
+
+		if detail.EventType == enums.EVENT_TYPE.OrderProcessed.String() {
+			var messageDetail models.NotificationMessageDetail
+			if err := json.Unmarshal([]byte(detail.Message), &messageDetail); err != nil {
+				return fmt.Errorf("Error unmarshalling message:", err)
+			}
+			log.Println(messageDetail)
+
+			order, err := orderService.HandleOrderProcessingNotificationSentEvent(ctx, messageDetail.Detail.ID)
+			if err != nil {
+				fmt.Printf("Error updating order: %v\n", err)
+			} else {
+				fmt.Printf("Order updated successfully: %+v\n", order)
+			}
 		}
 	default:
 		log.Printf("Unhandled event type: %s", event.DetailType)
 	}
+	return nil
 }
 
 func StartSQSConsumer(queueURL string, orderService *services.OrderService) {
@@ -179,8 +187,10 @@ func receiveMessages(ctx context.Context, queueURL string) *sqs.ReceiveMessageOu
 }
 
 func processMessage(msg *types.Message, msgValidator *validator.Validator, queueURL string, orderService *services.OrderService) {
-	handleMessage(msg, msgValidator, orderService)
-	deleteMessage(queueURL, *msg.ReceiptHandle)
+	err := handleMessage(msg, msgValidator, orderService)
+	if err != nil {
+		deleteMessage(queueURL, *msg.ReceiptHandle)
+	}
 }
 
 func deleteMessage(queueURL string, receiptHandle string) {

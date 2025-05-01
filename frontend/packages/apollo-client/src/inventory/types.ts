@@ -33,3 +33,19 @@ export const RemoveInventoryInputSchema = z.object({
   id: z.string().uuid('Invalid ID format'),
 });
 export type TRemoveInventoryInput = z.infer<typeof RemoveInventoryInputSchema>;
+
+
+export const ProductInputSchema = z.object({
+  productId: z.string().uuid(),
+  quantity: z.number().int().min(1),
+  currency: z.string(),
+});
+
+export const ReserveInventoryInputSchema = z.object({
+  userId: z.string().uuid(),
+  products: z.array(ProductInputSchema),
+});
+
+
+export type TProductInput = z.infer<typeof ProductInputSchema>;
+export type TReserveInventoryInput = z.infer<typeof ReserveInventoryInputSchema>;

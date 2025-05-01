@@ -10,8 +10,6 @@ type Inventory {
   images: [String!]!
   categories: [String!]!
   quantity: Int!
-  price: Float!
-  discount: Float
   createdAt: Date!
   updatedAt: Date!
 }
@@ -28,6 +26,7 @@ type Mutation {
   createInventory(createInventoryInput: CreateInventoryInput!): Inventory!
   updateInventory(updateInventoryInput: UpdateInventoryInput!): Inventory!
   removeInventory(id: String!): Inventory!
+  handleReserveInventory(reserveInventoryInput: ReserveInventoryInput!): [Inventory!]!
 }
 
 input CreateInventoryInput {
@@ -37,7 +36,6 @@ input CreateInventoryInput {
   images: [String!]!
   categories: [String!]!
   quantity: Float!
-  price: Float!
   discount: Float!
 }
 
@@ -49,6 +47,16 @@ input UpdateInventoryInput {
   images: [String!]
   categories: [String!]
   quantity: Float
-  price: Float
   discount: Float
+}
+
+input ReserveInventoryInput {
+  userId: String!
+  products: [ProductInput!]!
+}
+
+input ProductInput {
+  productId: String!
+  quantity: Float!
+  currency: String!
 }

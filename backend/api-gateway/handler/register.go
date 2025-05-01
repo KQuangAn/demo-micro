@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,6 +22,8 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID := uuid.New().String()
+
 	hashedPassword, err := HashPassword(creds.Password)
 	if err != nil {
 		http.Error(w, "Could not hash password", http.StatusInternalServerError)
@@ -28,7 +31,10 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := redis.Client()
-	err = client.HSet(ctx, creds.Username, "password", hashedPassword).Err()
+	err = client.HSet(ctx, creds.Username, map[string]any{
+		"user_id":  userID,
+		"password": hashedPassword,
+	}).Err()
 	if err != nil {
 		http.Error(w, "Could not register user", http.StatusInternalServerError)
 		return

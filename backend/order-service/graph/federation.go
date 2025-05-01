@@ -161,13 +161,32 @@ func (ec *executionContext) resolveEntity(
 		switch resolverName {
 
 		case "findOrderByID":
-			id0, err := ec.unmarshalNID2string(ctx, rep["id"])
+			id0, err := ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID(ctx, rep["id"])
 			if err != nil {
 				return nil, fmt.Errorf(`unmarshalling param 0 for findOrderByID(): %w`, err)
 			}
 			entity, err := ec.resolvers.Entity().FindOrderByID(ctx, id0)
 			if err != nil {
 				return nil, fmt.Errorf(`resolving Entity "Order": %w`, err)
+			}
+
+			return entity, nil
+		}
+	case "OrderDetail":
+		resolverName, err := entityResolverNameForOrderDetail(ctx, rep)
+		if err != nil {
+			return nil, fmt.Errorf(`finding resolver for Entity "OrderDetail": %w`, err)
+		}
+		switch resolverName {
+
+		case "findOrderDetailByID":
+			id0, err := ec.unmarshalNUUID2githubᚗcomᚋgoogleᚋuuidᚐUUID(ctx, rep["id"])
+			if err != nil {
+				return nil, fmt.Errorf(`unmarshalling param 0 for findOrderDetailByID(): %w`, err)
+			}
+			entity, err := ec.resolvers.Entity().FindOrderDetailByID(ctx, id0)
+			if err != nil {
+				return nil, fmt.Errorf(`resolving Entity "OrderDetail": %w`, err)
 			}
 
 			return entity, nil
@@ -230,5 +249,40 @@ func entityResolverNameForOrder(ctx context.Context, rep EntityRepresentation) (
 		return "findOrderByID", nil
 	}
 	return "", fmt.Errorf("%w for Order due to %v", ErrTypeNotFound,
+		errors.Join(entityResolverErrs...).Error())
+}
+
+func entityResolverNameForOrderDetail(ctx context.Context, rep EntityRepresentation) (string, error) {
+	// we collect errors because a later entity resolver may work fine
+	// when an entity has multiple keys
+	entityResolverErrs := []error{}
+	for {
+		var (
+			m   EntityRepresentation
+			val any
+			ok  bool
+		)
+		_ = val
+		// if all of the KeyFields values for this resolver are null,
+		// we shouldn't use use it
+		allNull := true
+		m = rep
+		val, ok = m["id"]
+		if !ok {
+			entityResolverErrs = append(entityResolverErrs,
+				fmt.Errorf("%w due to missing Key Field \"id\" for OrderDetail", ErrTypeNotFound))
+			break
+		}
+		if allNull {
+			allNull = val == nil
+		}
+		if allNull {
+			entityResolverErrs = append(entityResolverErrs,
+				fmt.Errorf("%w due to all null value KeyFields for OrderDetail", ErrTypeNotFound))
+			break
+		}
+		return "findOrderDetailByID", nil
+	}
+	return "", fmt.Errorf("%w for OrderDetail due to %v", ErrTypeNotFound,
 		errors.Join(entityResolverErrs...).Error())
 }

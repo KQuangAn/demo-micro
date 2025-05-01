@@ -1,5 +1,6 @@
 import { gql } from '@apollo/client';
 import { TInventory } from '../types/index.js';
+import { TReserveInventory } from './dto/index.js';
 
 export const CREATE_INVENTORY_ITEM = (input: TInventory) => gql`
   mutation CreateInventoryItem {
@@ -68,6 +69,22 @@ export const REMOVE_INVENTORY_ITEM = (id: string) => gql`
       quantity
       price
       discount
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const RESERVE_INVENTORY = gql`
+  mutation HandleReserveInventory($reserveInventoryInput: ReserveInventoryInput!) {
+    handleReserveInventory(reserveInventoryInput: $reserveInventoryInput) {
+      id
+      userId
+      productId
+      quantity
+      price
+      currency
+      status
       createdAt
       updatedAt
     }

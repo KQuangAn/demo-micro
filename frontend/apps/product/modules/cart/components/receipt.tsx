@@ -1,19 +1,24 @@
-'use client';
+"use client";
 
-import { Button } from '../../components/ui/button';
+import { Button } from "../../components/ui/button";
 import {
   Card,
   CardHeader,
   CardContent,
   CardFooter,
-} from '../../components/ui/card';
-import { isVariableValid } from '../../lib/utils';
-import { useCartContext } from '../../providers/cart-provider';
-import { Separator } from '../../components/ui/separator';
-import { client, CREATE_ORDER } from '@repo/apollo-client';
-import { useMutation } from '@apollo/client';
+} from "../../components/ui/card";
+import { isVariableValid } from "../../lib/utils";
+import { useCartContext } from "../../providers/cart-provider";
+import { Separator } from "../../components/ui/separator";
+import {
+  client,
+  RESERVE_INVENTORY,
+  ReserveInventoryInputSchema,
+  TReserveInventoryInput,
+} from "@repo/apollo-client";
+import { useMutation } from "@apollo/client";
 
-const tempUserid = '550e8400-e29b-41d4-a716-446655440004';
+const tempUserid = "550e8400-e29b-41d4-a716-446655440004";
 
 export function Receipt() {
   //const { authenticated } = useAuthenticated();
@@ -22,29 +27,36 @@ export function Receipt() {
   //   useMutation(CREATE_ORDER);
 
   const handleCheckout = async () => {
-    const ordersToCreate = cart.items.map((item) => ({
+    const reserveInput: TReserveInventoryInput = {
       userId: tempUserid,
-      productId: item?.productId,
-      quantity: item?.count,
-    }));
-    console.log(ordersToCreate);
+      products: cart.items.map((item) => ({
+        productId: item.productId,
+        quantity: item.count,
+        currency: "USD",
+      })),
+    };
+
+    const parsed = ReserveInventoryInputSchema.safeParse(reserveInput);
+
+    if (!parsed.success) {
+      console.error("Validation failed", parsed.error);
+      return;
+    }
     try {
       // const createOrderPromises = ordersToCreate.map((order) =>
       //   createOrder({ variables: order })
       // );
       const result = await client.mutate({
-        mutation: CREATE_ORDER,
+        mutation: RESERVE_INVENTORY,
         variables: {
-          userID: tempUserid,
-          productId: ordersToCreate[0]?.productId,
-          quantity: ordersToCreate[0]?.quantity,
+          reserveInventoryInput: parsed.data,
         },
       });
 
       //const result = await Promise.all(createOrderPromises);
-      console.log('Batch order creation results:', result);
+      console.log("Batch order creation results:", result);
     } catch (error) {
-      console.error('Error creating orders in batch:', error);
+      console.error("Error creating orders in batch:", error);
     }
   };
   //console.log(data, loadingMutation, error);
@@ -73,7 +85,7 @@ export function Receipt() {
   }
 
   return (
-    <Card className={loading ? 'animate-pulse' : ''}>
+    <Card className={loading ? "animate-pulse" : ""}>
       <CardHeader className="p-4 pb-0">
         <h2 className="font-bold tracking-tight">Receipt</h2>
       </CardHeader>
@@ -102,7 +114,7 @@ export function Receipt() {
       <CardFooter>
         <Button
           onClick={handleCheckout}
-          disabled={!isVariableValid(cart?.items) || cart['items'].length === 0}
+          disabled={!isVariableValid(cart?.items) || cart["items"].length === 0}
           className="w-full"
         >
           Checkout

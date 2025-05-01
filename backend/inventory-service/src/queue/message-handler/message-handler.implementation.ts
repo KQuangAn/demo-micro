@@ -13,11 +13,6 @@ export class InventoryMessageHandler implements IMessageHandler {
     const payload = message?.detail;
     console.log(type, payload, message);
     switch (type) {
-      case EventType.OrderPlaced: {
-        if (isOrders(payload)) {
-          return await this.inventoryService.handleOrderCreated(payload);
-        }
-      }
       case EventType.OrderUpdated: {
         if (isOrders(payload)) {
           return await this.inventoryService.handleOrderUpdated(payload);

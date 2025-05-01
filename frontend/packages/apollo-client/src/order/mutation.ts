@@ -21,39 +21,32 @@ export const CREATE_ORDER = gql`
 // }
 
 export const UPDATE_ORDER = gql`
-  mutation updateOrder(
-    $id: ID!
-    $productId: ID!
-    $quantity: Int!
-    $status: OrderStatus!
+  mutation UpdateOrderDetail {
+  updateOrderDetail(
+    orderDetailId: "ORDER_DETAIL_ID_HERE"
+    quantity: 2
+    status: validated
   ) {
-    updateOrder(
-      id: $id
-      productId: $productId
-      quantity: $quantity
-      status: $status
-    ) {
-      id
-      userID
-      productId
-      quantity
-      status
-      createdAt
-      updatedAt
-    }
+    id
+    orderId
+    productId
+    quantity
+    price
+    currency
+    status
+    createdAt
+    updatedAt
   }
+}
 `;
 
 export const CANCEL_ORDER = gql`
-  mutation cancelOrder($id: ID!) {
-    cancelOrder(id: $id) {
-      id
-      userID
-      productId
-      quantity
-      status
-      createdAt
-      updatedAt
-    }
+ mutation CancelOrder {
+  cancelOrder(id: "ORDER_ID_HERE") {
+    id
+    userId
+    createdAt
+    updatedAt
   }
+}
 `;

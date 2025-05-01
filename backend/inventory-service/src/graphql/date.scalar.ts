@@ -14,6 +14,6 @@ export const DateScalar = new GraphQLScalarType({
         if (ast.kind === Kind.INT) {
             return new Date(parseInt(ast.value, 10));
         }
-        return new Date();//return crr if not parsable
+        return new Date(ast);
     }
 })

@@ -9,25 +9,36 @@ type NotificationMessageDetail struct {
 }
 
 type NotificationEventDetail struct {
-	SubjectId string `json:"subjectId" validate:"required"`
+	SubjectID string `json:"subjectId" validate:"required"`
 	EventType string `json:"type"`
 	Message   string `json:"message"`
 	CreatedAt string `json:"createdAt"`
 	UpdatedAt string `json:"updatedAt"`
 }
 
-type InventoryReservedEventDetail struct {
-	OrderID   string `json:"orderId" validate:"required"`
+type InventoryItem struct {
+	UserID    string `json:"userId" validate:"required"`
 	ProductID string `json:"productId"`
-	Title     string `json:"title"`
 	Quantity  int32  `json:"quantity" validate:"gte=1"`
+	Price     int32  `json:"price" validate:"gte=1"`
+	Reason    string `json:"reason"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
+	// add more
+}
+
+type InventoryReservedEventDetail struct {
+	UserID    string `json:"userId" validate:"required"`
+	ProductID string `json:"productId"`
+	Quantity  int32  `json:"quantity" validate:"gte=1"`
+	Price     int32  `json:"price" validate:"gte=1"`
 	Reason    string `json:"reason"`
 	CreatedAt string `json:"createdAt"`
 	UpdatedAt string `json:"updatedAt"`
 	// add more
 }
 type InventoryReservedFailEventDetail struct {
-	OrderID   string `json:"orderId" validate:"required"`
+	UserID    string `json:"orderId" validate:"required"`
 	ProductID string `json:"productId"`
 	Title     string `json:"title"`
 	Quantity  int32  `json:"quantity" validate:"gte=1"`

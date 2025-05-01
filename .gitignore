@@ -27,7 +27,6 @@ dist/
 *.a
 vendor/
 bin/
-pkg/
 *.profile
 
 # Terraform

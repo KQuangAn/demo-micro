@@ -25,12 +25,6 @@ export class Inventory {
   @Field(() => Int)
   quantity: number;
 
-  @Field(() => Float)
-  price: number;
-
-  @Field(() => Float, { nullable: true })
-  discount?: number;
-
   @Field(() => DateScalar)
   createdAt: Date;
 

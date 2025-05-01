@@ -7,72 +7,117 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 type Mutation struct {
 }
 
 type Order struct {
-	ID        string      `json:"id"`
-	UserID    string      `json:"userID"`
-	ProductID string      `json:"productId"`
-	Quantity  int32       `json:"quantity"`
-	Status    OrderStatus `json:"status"`
-	CreatedAt string      `json:"createdAt"`
-	UpdatedAt string      `json:"updatedAt"`
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"userId"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 func (Order) IsEntity() {}
 
+type OrderConnection struct {
+	Edges    []*OrderEdge `json:"edges"`
+	PageInfo *PageInfo    `json:"pageInfo"`
+}
+
+type OrderDetail struct {
+	ID        uuid.UUID         `json:"id"`
+	OrderID   uuid.UUID         `json:"orderId"`
+	ProductID uuid.UUID         `json:"productId"`
+	Quantity  int32             `json:"quantity"`
+	Price     float64           `json:"price"`
+	Currency  string            `json:"currency"`
+	Status    OrderDetailStatus `json:"status"`
+	CreatedAt time.Time         `json:"createdAt"`
+	UpdatedAt time.Time         `json:"updatedAt"`
+}
+
+func (OrderDetail) IsEntity() {}
+
+type OrderDetailConnection struct {
+	Edges    []*OrderDetailEdge `json:"edges"`
+	PageInfo *PageInfo          `json:"pageInfo"`
+}
+
+type OrderDetailEdge struct {
+	Node   *OrderDetail `json:"node"`
+	Cursor time.Time    `json:"cursor"`
+}
+
+type OrderEdge struct {
+	Node   *Order    `json:"node"`
+	Cursor time.Time `json:"cursor"`
+}
+
+type PageInfo struct {
+	HasNextPage     bool       `json:"hasNextPage"`
+	HasPreviousPage bool       `json:"hasPreviousPage"`
+	StartCursor     *time.Time `json:"startCursor,omitempty"`
+	EndCursor       *time.Time `json:"endCursor,omitempty"`
+}
+
 type Query struct {
 }
 
-type OrderStatus string
+type OrderDetailStatus string
 
 const (
-	OrderStatusPending    OrderStatus = "Pending"
-	OrderStatusProcessing OrderStatus = "Processing"
-	OrderStatusCompleted  OrderStatus = "Completed"
-	OrderStatusCancelled  OrderStatus = "Cancelled"
+	OrderDetailStatusPending    OrderDetailStatus = "pending"
+	OrderDetailStatusValidated  OrderDetailStatus = "validated"
+	OrderDetailStatusDelivering OrderDetailStatus = "delivering"
+	OrderDetailStatusDelivered  OrderDetailStatus = "delivered"
+	OrderDetailStatusCompleted  OrderDetailStatus = "completed"
+	OrderDetailStatusCancelled  OrderDetailStatus = "cancelled"
 )
 
-var AllOrderStatus = []OrderStatus{
-	OrderStatusPending,
-	OrderStatusProcessing,
-	OrderStatusCompleted,
-	OrderStatusCancelled,
+var AllOrderDetailStatus = []OrderDetailStatus{
+	OrderDetailStatusPending,
+	OrderDetailStatusValidated,
+	OrderDetailStatusDelivering,
+	OrderDetailStatusDelivered,
+	OrderDetailStatusCompleted,
+	OrderDetailStatusCancelled,
 }
 
-func (e OrderStatus) IsValid() bool {
+func (e OrderDetailStatus) IsValid() bool {
 	switch e {
-	case OrderStatusPending, OrderStatusProcessing, OrderStatusCompleted, OrderStatusCancelled:
+	case OrderDetailStatusPending, OrderDetailStatusValidated, OrderDetailStatusDelivering, OrderDetailStatusDelivered, OrderDetailStatusCompleted, OrderDetailStatusCancelled:
 		return true
 	}
 	return false
 }
 
-func (e OrderStatus) String() string {
+func (e OrderDetailStatus) String() string {
 	return string(e)
 }
 
-func (e *OrderStatus) UnmarshalGQL(v any) error {
+func (e *OrderDetailStatus) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
 	}
 
-	*e = OrderStatus(str)
+	*e = OrderDetailStatus(str)
 	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid OrderStatus", str)
+		return fmt.Errorf("%s is not a valid OrderDetailStatus", str)
 	}
 	return nil
 }
 
-func (e OrderStatus) MarshalGQL(w io.Writer) {
+func (e OrderDetailStatus) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-func (e *OrderStatus) UnmarshalJSON(b []byte) error {
+func (e *OrderDetailStatus) UnmarshalJSON(b []byte) error {
 	s, err := strconv.Unquote(string(b))
 	if err != nil {
 		return err
@@ -80,7 +125,7 @@ func (e *OrderStatus) UnmarshalJSON(b []byte) error {
 	return e.UnmarshalGQL(s)
 }
 
-func (e OrderStatus) MarshalJSON() ([]byte, error) {
+func (e OrderDetailStatus) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

@@ -9,13 +9,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitterService } from 'src/event-emitter/event-emitter.service';
 import { EventType, TOrders } from 'src/common/types';
 import { Prisma } from '@prisma/client';
+import { ReserveInventoryInput } from './dto/reserve.inventory.input';
 
 @Injectable()
 export class InventoryService {
   constructor(
     private prisma: PrismaService,
     private eb: EventEmitterService,
-  ) {}
+  ) { }
 
   async findAll(): Promise<Inventory[]> {
     return this.prisma.inventory.findMany();
@@ -52,7 +53,6 @@ export class InventoryService {
       name?: string;
       description?: string;
       quantity?: number;
-      price?: number;
     },
   ): Promise<Inventory> {
     return await this.prisma.$transaction(async (tx) => {
@@ -175,49 +175,109 @@ export class InventoryService {
     }
   }
 
-  async handleOrderCreated(payload: TOrders): Promise<Inventory | void> {
+  async handleReserveInventory(payload: ReserveInventoryInput): Promise<Inventory[] | void> {
     try {
-      await this.prisma.$transaction(async (tx) => {
-        const { productId, quantity } = payload;
+      return await this.prisma.$transaction(async (tx) => {
+        const productMap = new Map(payload.products.map(p => [p.productId, p]));
 
-        const inventoryItem = await tx.inventory.findUnique({
-          where: { id: productId },
+        const inventories = await tx.inventory.findMany({
+          where: {
+            id: { in: [...productMap.keys()] }
+          }
         });
 
-        if (!inventoryItem) {
-          throw new NotFoundException(
-            `Inventory item with id ${productId} not found`,
-          );
+        if (inventories.length !== payload.products.length) {
+          throw new NotFoundException(`Some products not found in inventory`);
         }
 
-        const updatedQuantity = inventoryItem.quantity - quantity;
-        if (updatedQuantity < 0) {
-          throw new BadRequestException(`Inventory dont have enough stock!`);
-        }
+        const priceCriteria = payload.products.map(p => ({
+          productId: p.productId,
+          currencyName: p.currency,
+        }));
 
-        const res = await tx.inventory.update({
-          where: { id: productId },
-          data: { quantity: updatedQuantity },
+        const prices = await tx.prices.findMany({
+          where: {
+            OR: priceCriteria.map(c => ({
+              inventory: { id: c.productId },
+              currencies: { name: c.currencyName },
+            })),
+          },
+          include: { currencies: true },
+          orderBy: { startDate: 'desc' },
         });
 
-        if (!res) {
-          throw new BadRequestException(`Error updating inventory`);
+        const latestPriceMap = new Map<string, number>();
+
+        for (const price of prices) {
+          const key = `${price.productId}_${price.currencies.name}`;
+          if (!latestPriceMap.has(key)) {
+            latestPriceMap.set(key, Number(price.price));
+          }
         }
-        const { id } = res;
+
+        const updatedItems: Inventory[] = [];
+
+        const reservedItems: Array<{
+          productId: string;
+          quantity: number;
+          price: number;
+          currency: string;
+        }> = [];
+
+        for (const inventory of inventories) {
+          const productInput = productMap.get(inventory.id);
+
+          if (!productInput) {
+            throw new BadRequestException(`Missing input for product ${inventory.id}`);
+          }
+
+          const newQty = inventory.quantity - productInput.quantity;
+
+          if (newQty < 0) {
+            throw new BadRequestException(
+              `Not enough stock for product ${inventory.id}`
+            );
+          }
+
+          const inventoryItem = await tx.inventory.update({
+            where: { id: inventory.id },
+            data: { quantity: newQty },
+          });
+          console.log(inventoryItem, 1234123)
+          updatedItems.push(inventoryItem);
+
+          const priceKey = `${inventory.id}_${productInput.currency}`;
+          const price = latestPriceMap.get(priceKey);
+
+          if (price === undefined) {
+            throw new NotFoundException(`Price not found for product ${inventory.id} in currency ${productInput.currency}`);
+          }
+
+          reservedItems.push({
+            productId: inventoryItem.id,
+            quantity: productInput.quantity,
+            price,
+            currency: productInput.currency,
+          });
+        }
+
         await this.eb.emit(
-          { orderId: payload.id, productId: id, ...res },
+          {
+            userId: payload.userId,
+            items: reservedItems,
+          },
           EventType.InventoryReserved,
         );
 
-        return res;
+        return updatedItems;
       });
     } catch (e) {
-      const reason = `Error reserving inventory :${e}`;
-      await this.eb.emit(
-        { ...payload, reason },
-        EventType.InventoryReservationFailed,
-      );
+      const reason = `Error reserving inventory: ${e}`;
+      await this.eb.emit({ ...payload, reason }, EventType.InventoryReservationFailed);
       throw new BadRequestException(`Error reserving inventory`, e);
     }
   }
+
+
+
 }

@@ -35,7 +35,7 @@ func respondWithError(w http.ResponseWriter, code int, message string, err error
 	http.Error(w, message, code)
 }
 
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+func respondWithJSON(w http.ResponseWriter, code int, payload any) {
 	response, err := json.Marshal(payload)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Failed to encode response", err)
@@ -95,8 +95,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Logged in successfully",
-		"token": token})
+	json.NewEncoder(w).Encode(map[string]string{"message": "Logged in successfully"})
 }
 
 func TokenValid(next http.Handler) http.Handler {
@@ -108,7 +107,7 @@ func TokenValid(next http.Handler) http.Handler {
 		}
 
 		claims := &models.Claims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
 			return mySigningKey, nil
 		})
 

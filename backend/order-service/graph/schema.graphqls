@@ -1,27 +1,81 @@
+scalar Time
+scalar UUID
+
 type Order @key(fields: "id") {
-  id: ID!
-  userID: ID!
-  productId: ID!
-  quantity: Int!
-  status: OrderStatus!
-  createdAt: String!
-  updatedAt: String!
+  id: UUID!
+  userId: UUID!
+  createdAt: Time!
+  updatedAt: Time!
 }
 
-enum OrderStatus {
-  Pending
-  Processing
-  Completed
-  Cancelled
+type OrderDetail @key(fields: "id") {
+  id: UUID!
+  orderId: UUID!
+  productId: UUID!
+  quantity: Int!
+  price: Float!
+  currency: String!
+  status: OrderDetailStatus!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+enum OrderDetailStatus {
+  pending
+  validated
+  delivering
+  delivered
+  completed
+  cancelled
+}
+
+type OrderEdge {
+  node: Order!
+  cursor: Time!
+}
+
+type OrderConnection {
+  edges: [OrderEdge!]!
+  pageInfo: PageInfo!
+}
+
+type OrderDetailEdge {
+  node: OrderDetail!
+  cursor: Time!
+}
+
+type OrderDetailConnection {
+  edges: [OrderDetailEdge!]!
+  pageInfo: PageInfo!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: Time
+  endCursor: Time
 }
 
 type Query {
-  orders: [Order!]!
-  order(id: ID!): Order
+  getOrdersByUserId(
+    userId: UUID!
+    first: Int
+    after: Time
+  ): OrderConnection!
+
+  getOrderDetailsByOrderId(
+    orderId: UUID!
+    first: Int
+    after: Time
+  ): OrderDetailConnection!
 }
 
 type Mutation {
-  createOrder(userID: ID! , productId: ID!, quantity: Int!): Order!
-  updateOrder(id: ID!, productId: ID!, quantity: Int!,status: OrderStatus!): Order!
-  cancelOrder(id: ID!): Order!
+  updateOrderDetail(
+    orderDetailId: UUID!
+    quantity: Int
+    status: OrderDetailStatus
+  ): OrderDetail!
+
+  cancelOrder(id: UUID!): Order!
 }

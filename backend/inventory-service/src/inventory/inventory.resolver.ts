@@ -1,8 +1,9 @@
 import { Resolver, Query, Mutation, Args, ID } from '@nestjs/graphql';
 import { InventoryService } from './inventory.service';
 import { CreateInventoryInput } from './dto/create-inventory.input';
-import { UpdateInventoryInput } from './dto/update-inventory.input';
+import { UpdateInventoryInput } from './dto/update.inventory.input';
 import { Inventory } from './entities/inventory.entity';
+import { ReserveInventoryInput } from './dto/reserve.inventory.input';
 
 @Resolver(() => Inventory)
 export class InventoryResolver {
@@ -38,5 +39,12 @@ export class InventoryResolver {
   @Mutation(() => Inventory)
   async removeInventory(@Args('id') id: string) {
     return this.inventoryService.remove(id);
+  }
+
+  @Mutation(() => [Inventory]) 
+  async handleReserveInventory(
+    @Args('reserveInventoryInput') reserveInventoryInput: ReserveInventoryInput,
+  ) {
+    return this.inventoryService.handleReserveInventory(reserveInventoryInput);
   }
 }

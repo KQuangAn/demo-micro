@@ -15,6 +15,7 @@ import { getEnv } from 'config';
 import { EventEmitterModule } from './event-emitter/event-emitter.module';
 import { MessageHandlerModule } from './queue/message-handler/message-handler.module';
 import { DateScalar } from './graphql/date.scalar';
+// import { DecimalScalar } from './graphql/decimal.scalar';
 
 @Module({
   imports: [
@@ -31,7 +32,8 @@ import { DateScalar } from './graphql/date.scalar';
       },
       csrfPrevention: false, // temp
       resolvers: {
-        Date: DateScalar, // Register the Date scalar type
+        Date: DateScalar,
+       // Decimal: DecimalScalar
       },
     }),
     AuthModule,

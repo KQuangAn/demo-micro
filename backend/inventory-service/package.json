@@ -38,6 +38,7 @@
     "@prisma/client": "^6.6.0",
     "apollo-server-express": "^3.13.0",
     "aws-sdk": "^2.1692.0",
+    "decimal.js": "^10.5.0",
     "graphql": "^16.10.0",
     "graphql-tools": "^9.0.18",
     "passport": "^0.7.0",

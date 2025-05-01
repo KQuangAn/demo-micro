@@ -8,7 +8,6 @@ export const InventorySchema = z.object({
   images: z.array(z.string()),
   categories: z.array(z.string()),
   quantity: z.number().int(),
-  price: z.number(),
   discount: z.number(),
   createdAt: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: 'Invalid date format for createdAt',

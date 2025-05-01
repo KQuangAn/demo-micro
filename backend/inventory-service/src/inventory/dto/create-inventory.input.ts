@@ -21,8 +21,5 @@ export class CreateInventoryInput {
   quantity: number;
 
   @Field()
-  price: number;
-
-  @Field()
   discount: number;
 }

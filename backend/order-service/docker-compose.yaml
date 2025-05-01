@@ -1,22 +1,22 @@
 services:
-  orders-service:
-    build:
-      context: ./backend/order-service
-    ports:
-      - '9001:9001'
-    env_file:
-      - ./backend/order-service/.env
-    dns:
-      - 10.0.2.20
-    environment:
-      - PORT=9001
-      - DATABASE_URL=orders-db:5432
-      - AWS_ENDPOINT=http://localstack:4566
-    depends_on:
-      - orders-db
-      - localstack
-    networks:
-      - app-network
+  # orders-service:
+  #   build:
+  #     context: ./backend/order-service
+  #   ports:
+  #     - '9001:9001'
+  #   env_file:
+  #     - ./backend/order-service/.env
+  #   dns:
+  #     - 10.0.2.20
+  #   environment:
+  #     - PORT=9001
+  #     - DATABASE_URL=orders-db:5432
+  #     - AWS_ENDPOINT=http://localstack:4566
+  #   depends_on:
+  #     - orders-db
+  #     - localstack
+  #   networks:
+  #     - app-network
   localstack:
     image: localstack/localstack:latest
     environment:
@@ -30,13 +30,13 @@ services:
     volumes:
       - '/var/run/docker.sock:/var/run/docker.sock'
   db:
-    image: postgres:latest
+    image: postgres:13
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: mydatabase
+      POSTGRES_DB: orders
     ports:
-      - '5432:5432'
+      - '5431:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
 volumes:

@@ -24,5 +24,5 @@ export class UpdateInventoryInput {
   quantity?: number;
 
   @Field({ nullable: true })
-  discount?: number;
+  price: number;
 }

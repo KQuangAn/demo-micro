@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"orderservice/graph/model"
+	"orderservice/internal/utils"
 	"strings"
 	"time"
 
@@ -51,7 +52,13 @@ type CurrencyLookup struct {
 }
 
 type OrderRepository interface {
-	CreateOrder(ctx context.Context, tx pgx.Tx, user_id uuid.UUID, input []OrderItemInput) (*Order, error)
+	GetAllOrders(
+		ctx context.Context,
+		tx pgx.Tx,
+		first *int32, after *time.Time,
+	) ([]*Order, *time.Time, error)
+
+	CreateOrder(ctx context.Context, tx pgx.Tx, user_id uuid.UUID, input []*OrderItemInput) (*Order, error)
 	GetOrderByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*Order, error)
 
 	//GetOrderByUserId(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*Order, error)
@@ -61,18 +68,22 @@ type OrderRepository interface {
 
 	GetOrdersByUserId(
 		ctx context.Context,
+		tx pgx.Tx,
 		userId uuid.UUID,
-	) ([]Order, error)
+		first *int32,
+		after *time.Time,
+	) ([]*Order, *time.Time, error)
 	GetOrdersByUserIdPaginated(
 		ctx context.Context,
+		tx pgx.Tx,
 		userId uuid.UUID,
-		limit int32,
-		after time.Time,
-	) ([]Order, time.Time, error)
-	GetOrderDetailByOrderID(ctx context.Context, tx pgx.Tx, orderId uuid.UUID) ([]OrderDetail, error)
+		limit *int32,
+		after *time.Time,
+	) ([]*Order, *time.Time, error)
+	GetOrderDetailByOrderID(ctx context.Context, tx pgx.Tx, orderId uuid.UUID) ([]*OrderDetail, error)
 
 	GetOrderDetailByOrderIDPaginated(ctx context.Context, tx pgx.Tx, orderId uuid.UUID, limit int32,
-		after time.Time) ([]OrderDetail, time.Time, error)
+		after time.Time) ([]*OrderDetail, time.Time, error)
 
 	UpdateOrderDetail(ctx context.Context, tx pgx.Tx, detail OrderDetail) (*OrderDetail, error)
 
@@ -176,7 +187,7 @@ type OrderItemInput struct {
 	Currency  string
 }
 
-func (r *orderRepository) CreateOrder(ctx context.Context, tx pgx.Tx, user_id uuid.UUID, items []OrderItemInput) (*Order, error) {
+func (r *orderRepository) CreateOrder(ctx context.Context, tx pgx.Tx, user_id uuid.UUID, items []*OrderItemInput) (*Order, error) {
 	var order Order
 	order.UserID = user_id
 
@@ -216,7 +227,7 @@ func (r *orderRepository) CreateOrder(ctx context.Context, tx pgx.Tx, user_id uu
 	lookup := NewCurrencyLookup(currencies)
 
 	// create order details
-	var orderDetails []OrderDetail
+	var orderDetails []*OrderDetail
 	for _, item := range items {
 		productUUID, err := uuid.Parse(item.ProductID)
 		if err != nil {
@@ -227,7 +238,7 @@ func (r *orderRepository) CreateOrder(ctx context.Context, tx pgx.Tx, user_id uu
 		if !exists {
 			continue
 		}
-		orderDetails = append(orderDetails, OrderDetail{
+		orderDetails = append(orderDetails, &OrderDetail{
 			OrderID:    order.ID,
 			ProductID:  productUUID,
 			Quantity:   int(item.Quantity),
@@ -275,72 +286,99 @@ func (r *orderRepository) CreateOrder(ctx context.Context, tx pgx.Tx, user_id uu
 
 func (r *orderRepository) GetOrdersByUserId(
 	ctx context.Context,
+	tx pgx.Tx,
 	userId uuid.UUID,
-) ([]Order, error) {
+	first *int32,
+	after *time.Time,
+) ([]*Order, *time.Time, error) {
 
 	query := fmt.Sprintf(`
 		SELECT id, user_id, created_at, updated_at 
 		FROM %s 
 		WHERE user_id = $1 
-		ORDER BY created_at ASC 
 	`, orderTableName)
+	query, params := utils.BuildPaginationQuery(query, after, first, "created_at", 2)
+	fmt.Println(query, "fqnqwekfnk")
+	params = append([]any{userId}, params...)
 
-	rows, err := r.db.Query(ctx, query, userId)
+	rows, err := tx.Query(ctx, query, params...)
 	if err != nil {
-		return nil, fmt.Errorf("query failed: %w", err)
+		return nil, nil, fmt.Errorf("query failed: %w", err)
 	}
 	defer rows.Close()
 
-	var orders []Order
+	var orders []*Order
+	var next *time.Time
 	for rows.Next() {
 		var o Order
 		if err := rows.Scan(&o.ID, &o.UserID, &o.CreatedAt, &o.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %w", err)
+			return nil, nil, fmt.Errorf("failed to scan row: %w", err)
 		}
-		orders = append(orders, o)
+		orders = append(orders, &o)
+		next = &o.CreatedAt
 	}
 
-	return orders, nil
+	return orders, next, nil
 }
 
 func (r *orderRepository) GetAllOrders(
 	ctx context.Context,
-	userId uuid.UUID,
-) ([]Order, error) {
+	tx pgx.Tx,
+	first *int32, after *time.Time,
+) ([]*Order, *time.Time, error) {
 
-	query := fmt.Sprintf(`
-		SELECT id, user_id, created_at, updated_at 
-		FROM %s 
-		ORDER BY created_at ASC 
-	`, orderTableName)
+	baseQuery := `
+			SELECT
+				o.id,
+				o.user_id,
+				o.created_at,
+				o.updated_at
+			FROM orders o
+		`
 
-	rows, err := r.db.Query(ctx, query, userId)
+	query, params := utils.BuildPaginationQuery(baseQuery, after, first, "o.created_at", 1)
+
+	rows, err := tx.Query(ctx, query, params...)
 	if err != nil {
-		return nil, fmt.Errorf("query failed: %w", err)
+		return nil, nil, fmt.Errorf("failed to execute query: %v", err)
 	}
 	defer rows.Close()
 
-	var orders []Order
+	var orders []*Order
+	var next *time.Time
 	for rows.Next() {
-		var o Order
-		if err := rows.Scan(&o.ID, &o.UserID, &o.CreatedAt, &o.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %w", err)
+		var order Order
+		if err := rows.Scan(
+			&order.ID,
+			&order.UserID,
+			&order.CreatedAt,
+			&order.UpdatedAt,
+		); err != nil {
+			return nil, nil, fmt.Errorf("failed to scan row: %v", err)
 		}
-		orders = append(orders, o)
+
+		orders = append(orders, &order)
+		next = &order.CreatedAt
 	}
 
-	return orders, nil
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("rows iteration error: %v", err)
+	}
+
+	return orders, next, nil
 }
+
 func (r *orderRepository) GetOrdersByUserIdPaginated(
 	ctx context.Context,
+	tx pgx.Tx,
 	userId uuid.UUID,
-	limit int32,
-	after time.Time,
-) ([]Order, time.Time, error) {
+	limit *int32,
+	after *time.Time,
+) ([]*Order, *time.Time, error) {
 	baseArgs := []any{userId}
 
 	// Use the helper to build the cursor condition and arguments
-	cursorCondition, cursorArgs := buildCursorCondition(after, time.Time{}, 2)
+	cursorCondition, cursorArgs := buildCursorCondition(*after, time.Time{}, 2)
 
 	args := append(baseArgs, cursorArgs...)
 	args = append(args, limit)
@@ -353,19 +391,19 @@ func (r *orderRepository) GetOrdersByUserIdPaginated(
 		LIMIT $%d
 	`, cursorCondition, len(args))
 
-	rows, err := r.db.Query(ctx, query, args...)
+	rows, err := tx.Query(ctx, query, args...)
 	if err != nil {
-		return nil, time.Time{}, fmt.Errorf("query failed: %w", err)
+		return nil, &time.Time{}, fmt.Errorf("query failed: %w", err)
 	}
 	defer rows.Close()
 
-	var orders []Order
+	var orders []*Order
 	for rows.Next() {
 		var o Order
 		if err := rows.Scan(&o.ID, &o.UserID, &o.CreatedAt, &o.UpdatedAt); err != nil {
-			return nil, time.Time{}, fmt.Errorf("failed to scan row: %w", err)
+			return nil, &time.Time{}, fmt.Errorf("failed to scan row: %w", err)
 		}
-		orders = append(orders, o)
+		orders = append(orders, &o)
 	}
 
 	var nextCursor time.Time
@@ -373,7 +411,7 @@ func (r *orderRepository) GetOrdersByUserIdPaginated(
 		nextCursor = orders[len(orders)-1].CreatedAt
 	}
 
-	return orders, nextCursor, nil
+	return orders, &nextCursor, nil
 }
 
 func (r *orderRepository) GetOrderByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*Order, error) {
@@ -462,7 +500,7 @@ func (r *orderRepository) CancelOrder(ctx context.Context, tx pgx.Tx, id uuid.UU
 func (r *orderRepository) UpdateOrderDetail(ctx context.Context, tx pgx.Tx, detail OrderDetail) (*OrderDetail, error) {
 	query := fmt.Sprintf(`
 		UPDATE %s 
-		SET product_id = $1, quantity = $2, price = $3, currency  = $4 , status = $5 
+		SET product_id = $1, quantity = $2, price = $3, currency_id  = $4 , status = $5 
 		WHERE id = $6`, orderDetailTableName)
 
 	_, err := tx.Exec(ctx, query,
@@ -474,7 +512,7 @@ func (r *orderRepository) UpdateOrderDetail(ctx context.Context, tx pgx.Tx, deta
 	return &detail, nil
 }
 
-func (r *orderRepository) GetOrderDetailByOrderID(ctx context.Context, tx pgx.Tx, orderId uuid.UUID) ([]OrderDetail, error) {
+func (r *orderRepository) GetOrderDetailByOrderID(ctx context.Context, tx pgx.Tx, orderId uuid.UUID) ([]*OrderDetail, error) {
 
 	query := fmt.Sprintf(`
 		SELECT id, orders_id, product_id, quantity, price,currency_id, status, created_at, updated_at 
@@ -489,7 +527,7 @@ func (r *orderRepository) GetOrderDetailByOrderID(ctx context.Context, tx pgx.Tx
 	if err != nil {
 		return nil, fmt.Errorf("not found: %v", err)
 	}
-	var orderDetail []OrderDetail
+	var orderDetail []*OrderDetail
 
 	//transform
 	for rows.Next() {
@@ -500,7 +538,7 @@ func (r *orderRepository) GetOrderDetailByOrderID(ctx context.Context, tx pgx.Tx
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
-		orderDetail = append(orderDetail, o)
+		orderDetail = append(orderDetail, &o)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -514,7 +552,7 @@ func (r *orderRepository) GetOrderDetailByOrderIDPaginated(
 	tx pgx.Tx,
 	orderId uuid.UUID,
 	limit int32,
-	after time.Time) ([]OrderDetail, time.Time, error) {
+	after time.Time) ([]*OrderDetail, time.Time, error) {
 
 	baseArgs := []any{orderId}
 
@@ -527,7 +565,7 @@ func (r *orderRepository) GetOrderDetailByOrderIDPaginated(
 	args := append(baseArgs, limit)
 
 	query := fmt.Sprintf(`
-		SELECT id, orders_id, product_id, quantity, price, currency, status, created_at, updated_at 
+		SELECT id, orders_id, product_id, quantity, price, currency_id, status, created_at, updated_at 
 		FROM %s 
 		JOIN currencies ON orders_id = $1 %s
 		ORDER BY created_at ASC
@@ -540,7 +578,7 @@ func (r *orderRepository) GetOrderDetailByOrderIDPaginated(
 	}
 	defer rows.Close()
 
-	var orderDetail []OrderDetail
+	var orderDetail []*OrderDetail
 	var nextCursor time.Time
 	for rows.Next() {
 		var o OrderDetail
@@ -550,7 +588,7 @@ func (r *orderRepository) GetOrderDetailByOrderIDPaginated(
 		); err != nil {
 			return nil, time.Time{}, fmt.Errorf("failed to scan row: %w", err)
 		}
-		orderDetail = append(orderDetail, o)
+		orderDetail = append(orderDetail, &o)
 		nextCursor = o.CreatedAt
 	}
 

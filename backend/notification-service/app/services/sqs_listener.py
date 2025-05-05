@@ -25,7 +25,7 @@ def process_message(message):
             # Handle different events: order and inventory
             if detail_type in EventType.order_types():
                 notification = Notification(
-                    subjectId=notification_data["detail"].get("userID"),
+                    subjectId=notification_data["detail"].get("userId"),
                     message=json.dumps(notification_data),
                     type=detail_type,
                     status=NotificationStatus.UNREAD

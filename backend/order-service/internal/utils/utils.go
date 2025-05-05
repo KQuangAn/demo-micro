@@ -32,7 +32,7 @@ func LoadEnvFile(ctx context.Context) {
 	}
 
 	if err != nil {
-		log.Fatalf("Failed to load .env file from any of the specified paths")
+		log.Println("Failed to load .env file from any of the specified paths") //dont exit
 	}
 
 	ValidateEnvVars()
@@ -53,8 +53,6 @@ func ValidateEnvVars() {
 		"DATABASE_USERNAME",
 		"DATABASE_PASSWORD",
 		"DATABASE_NAME",
-		"ORDER_TABLE_NAME",
-		"ORDER_DETAIL_TABLE_NAME",
 	}
 
 	for _, varName := range requiredVars {

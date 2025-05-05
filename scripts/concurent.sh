@@ -94,23 +94,37 @@ wait
 TARGET_ORDERS_ARN="arn:aws:sqs:${REGION}:000000000000:orders-queue"
 TARGET_NOTIFICATION_ARN="arn:aws:sqs:${REGION}:000000000000:notification-queue"
 TARGET_INVENTORY_ARN="arn:aws:sqs:${REGION}:000000000000:inventory-queue"
-
 # Helper to add multiple targets
 put_targets() {
   local rule=$1
   shift
   local targets=()
   local i=1
+  
   for arn in "$@"; do
     targets+=("{\"Id\":\"$i\",\"Arn\":\"$arn\"}")
     ((i++))
   done
-  aws --endpoint-url="$AWS_ENDPOINT_URL" events put-targets \
+
+  # Create a valid JSON array with commas
+  local targets_string=$(printf ",%s" "${targets[@]}") # Join with commas
+  targets_string="[${targets_string:1}]" # Remove the leading comma
+
+  # Log the targets string for debugging
+  echo "Targets JSON: $targets_string"
+
+  local output
+  output=$(aws --endpoint-url="$AWS_ENDPOINT_URL" events put-targets \
     --rule "$rule" \
     --event-bus-name "$EVENT_BUS_NAME" \
-    --targets "$(IFS=, ; echo "${targets[*]}")" &
+    --targets "$targets_string" 2>&1) 
+  
+  if [[ $? -ne 0 ]]; then
+    echo "Error putting targets for rule $rule: $output"
+  else
+    echo "Successfully added targets for rule $rule."
+  fi
 }
-
 # Map rules to targets
 put_targets "order_placed" "$TARGET_NOTIFICATION_ARN" "$TARGET_INVENTORY_ARN"
 put_targets "order_processing" "$TARGET_INVENTORY_ARN" "$TARGET_NOTIFICATION_ARN"

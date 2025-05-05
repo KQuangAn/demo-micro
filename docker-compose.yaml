@@ -115,6 +115,7 @@ services:
       - '5431:5432'
     volumes:
       - order-db-data:/var/lib/postgresql/data
+      - ./backend/order-service/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - app-network
 
@@ -128,6 +129,7 @@ services:
       - '5432:5432'
     volumes:
       - inventory-db-data:/var/lib/postgresql/data
+      - ./backend/inventory-service/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - app-network
 

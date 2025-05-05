@@ -10,6 +10,8 @@ type Inventory {
   images: [String!]!
   categories: [String!]!
   quantity: Int!
+  price: Float!
+  currencyName: String!
   createdAt: Date!
   updatedAt: Date!
 }
@@ -36,7 +38,8 @@ input CreateInventoryInput {
   images: [String!]!
   categories: [String!]!
   quantity: Float!
-  discount: Float!
+  price: Float!
+  currencyName: String!
 }
 
 input UpdateInventoryInput {
@@ -47,7 +50,7 @@ input UpdateInventoryInput {
   images: [String!]
   categories: [String!]
   quantity: Float
-  discount: Float
+  price: Float
 }
 
 input ReserveInventoryInput {

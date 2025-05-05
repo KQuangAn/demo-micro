@@ -19,6 +19,8 @@ import (
 	"github.com/wundergraph/graphql-go-tools/execution/engine"
 	"github.com/wundergraph/graphql-go-tools/execution/graphql"
 	"github.com/wundergraph/graphql-go-tools/v2/pkg/playground"
+
+	muxHandler "github.com/gorilla/handlers"
 )
 
 func logger() log.Logger {
@@ -103,6 +105,11 @@ func startServer() {
 		panic("Failed to connect to Redis: " + err.Error())
 	}
 
+	// CORS configuration
+	corsOptions := muxHandler.AllowedOrigins([]string{"http://localhost:3000"}) // Update with your frontend URL
+	corsOptions = muxHandler.AllowedMethods([]string{"GET", "POST", "OPTIONS"})
+	corsOptions = muxHandler.AllowedHeaders([]string{"Content-Type", "Authorization"})
+
 	mux.HandleFunc("/login", appHandler.LoginHandler)
 	mux.HandleFunc("/register", appHandler.RegisterHandler)
 
@@ -113,7 +120,7 @@ func startServer() {
 		log.String("add", addr),
 	)
 	fmt.Printf("Access Playground on: http://%s%s%s\n", prettyAddr(addr), playgroundURLPrefix, playgroundURL)
-	err = http.ListenAndServe(addr, mux)
+	err = http.ListenAndServe(addr, muxHandler.CORS(corsOptions)(mux))
 	if err != nil {
 		logger.Fatal("failed listening", log.Error(err))
 	}

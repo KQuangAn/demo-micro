@@ -56,10 +56,10 @@ func (o *OrderItemInput) ToModelOrderItemInput() *repository.OrderItemInput {
 	}
 }
 
-func ToModelOrderItemInputs(items []OrderItemInput) []repository.OrderItemInput {
-	var result []repository.OrderItemInput
+func ToModelOrderItemInputs(items []OrderItemInput) []*repository.OrderItemInput {
+	var result []*repository.OrderItemInput
 	for _, item := range items {
-		result = append(result, repository.OrderItemInput{
+		result = append(result, &repository.OrderItemInput{
 			ProductID: item.ProductID,
 			Quantity:  item.Quantity,
 			Price:     item.Price,
@@ -104,44 +104,18 @@ func (s *orderService) runTransaction(ctx context.Context, fn func(tx pgx.Tx) (a
 
 func (s *orderService) GetAllOrders(ctx context.Context, first *int32, after *time.Time) (*model.OrderConnection, error) {
 	result, err := s.runTransaction(ctx, func(tx pgx.Tx) (any, error) {
-		baseQuery := `
-			SELECT
-				o.id,
-				o.user_id,
-				o.created_at,
-				o.updated_at
-			FROM orders o
-		`
-
-		query, params := utils.BuildPaginationQuery(baseQuery, after, first, "o.created_at", 1)
-
-		rows, err := tx.Query(ctx, query, params...)
+		res, _, err := s.orderRepo.GetAllOrders(ctx, tx, first, after)
 		if err != nil {
-			return nil, fmt.Errorf("failed to execute query: %v", err)
+			return nil, fmt.Errorf("error querying db, %v", err)
 		}
-		defer rows.Close()
-
-		var orders []*model.Order
-
-		for rows.Next() {
-			var order model.Order
-			if err := rows.Scan(
-				&order.ID,
-				&order.UserID,
-				&order.CreatedAt,
-				&order.UpdatedAt,
-			); err != nil {
-				return nil, fmt.Errorf("failed to scan row: %v", err)
+		var modelOrders []*model.Order
+		for _, order := range res {
+			if order != nil {
+				modelOrders = append(modelOrders, order.ToModelOrder())
 			}
-
-			orders = append(orders, &order)
 		}
 
-		if err := rows.Err(); err != nil {
-			return nil, fmt.Errorf("rows iteration error: %v", err)
-		}
-
-		return orders, nil
+		return modelOrders, nil
 	})
 
 	if err != nil {
@@ -183,30 +157,12 @@ func (s *orderService) GetAllOrders(ctx context.Context, first *int32, after *ti
 
 func (s *orderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.Order, error) {
 	result, err := s.runTransaction(ctx, func(tx pgx.Tx) (any, error) {
-		row := tx.QueryRow(ctx, `
-			SELECT
-				o.id,
-				o.user_id,
-				o.created_at,
-				o.updated_at
-			FROM orders o
-			WHERE o.id = $1`, id)
-		if row == nil {
-			return nil, fmt.Errorf("failed to execute query")
+		res, err := s.orderRepo.GetOrderByID(ctx, tx, id)
+		if err != nil {
+			return nil, fmt.Errorf("error querying db, %v", err)
 		}
 
-		var order model.Order
-
-		if err := row.Scan(
-			&order.ID,
-			&order.UserID,
-			&order.CreatedAt,
-			&order.UpdatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %v", err)
-		}
-
-		return order, nil
+		return res.ToModelOrder(), nil
 	})
 
 	if err != nil {
@@ -227,49 +183,16 @@ func (s *orderService) GetOrdersByUserId(
 	first *int32,
 	after *time.Time,
 ) (*model.OrderConnection, error) {
-
 	result, err := s.runTransaction(ctx, func(tx pgx.Tx) (any, error) {
-		query := `
-			SELECT
-				id,
-				user_id,
-				created_at,
-				updated_at
-			FROM orders
-			WHERE user_id = $1
-		`
+		orders, nextCursor, err := s.orderRepo.GetOrdersByUserId(ctx, tx, userId, first, after)
 
-		query, params := utils.BuildPaginationQuery(query, after, first, "created_at", 2)
-		fmt.Println(query, "12341234")
-		params = append([]any{userId}, params...)
-
-		rows, err := tx.Query(ctx, query, params...)
 		if err != nil {
-			return nil, fmt.Errorf("query error: %w", err)
+			return nil, fmt.Errorf("error querying db, %v", err)
 		}
-		defer rows.Close()
-
-		var orders []*model.Order
-		for rows.Next() {
-			var order model.Order
-			if err := rows.Scan(
-				&order.ID,
-				&order.UserID,
-				&order.CreatedAt,
-				&order.UpdatedAt,
-			); err != nil {
-				return nil, fmt.Errorf("failed to scan row: %w", err)
-			}
-			orders = append(orders, &order)
-		}
-		if err := rows.Err(); err != nil {
-			return nil, err
-		}
-
 		edges := make([]*model.OrderEdge, len(orders))
 		for i, order := range orders {
 			edges[i] = &model.OrderEdge{
-				Node:   order,
+				Node:   order.ToModelOrder(),
 				Cursor: order.CreatedAt,
 			}
 		}
@@ -277,9 +200,9 @@ func (s *orderService) GetOrdersByUserId(
 		var startCursor, endCursor *time.Time
 		if len(edges) > 0 {
 			start := edges[0].Cursor
-			end := edges[len(edges)-1].Cursor
+			end := nextCursor
 			startCursor = &start
-			endCursor = &end
+			endCursor = end
 		}
 
 		hasNextPage := len(orders) == int(*first)
@@ -475,9 +398,9 @@ func (s *orderService) GetOrdersDetailByOrderId(
 				&orderDetail.ID,
 				&orderDetail.OrderID,
 				&orderDetail.ProductID,
-				&orderDetail.Currency,
 				&orderDetail.Quantity,
 				&orderDetail.Price,
+				&orderDetail.Currency,
 				&orderDetail.Status,
 				&orderDetail.CreatedAt,
 				&orderDetail.UpdatedAt,
@@ -494,7 +417,6 @@ func (s *orderService) GetOrdersDetailByOrderId(
 
 		return orderDetails, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -504,9 +426,26 @@ func (s *orderService) GetOrdersDetailByOrderId(
 		return nil, fmt.Errorf("unexpected result type from transaction")
 	}
 
+	if len(orderDetails) == 0 {
+		return &model.OrderDetailConnection{
+			Edges:    []*model.OrderDetailEdge{},
+			PageInfo: &model.PageInfo{},
+		}, nil
+	}
+	var hasNextPage bool
+	var hasPreviousPage bool
+
+	if first != nil {
+		hasNextPage = len(orderDetails) > int(*first)
+		hasPreviousPage = *first > 0
+	} else {
+		hasNextPage = false
+		hasPreviousPage = false
+	}
+
 	pageInfo := &model.PageInfo{
-		HasNextPage:     len(orderDetails) > int(*first),
-		HasPreviousPage: *first > 0,
+		HasNextPage:     hasNextPage,
+		HasPreviousPage: hasPreviousPage,
 		StartCursor:     &orderDetails[0].CreatedAt,
 		EndCursor:       &orderDetails[len(orderDetails)-1].CreatedAt,
 	}

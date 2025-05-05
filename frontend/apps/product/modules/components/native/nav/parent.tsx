@@ -1,13 +1,19 @@
-"use client";
+'use client';
 
-import { LogInIcon, MoonIcon, ShoppingBasketIcon, SunIcon } from "lucide-react";
-import { useTheme } from "next-themes";
-import Link from "next/link";
-import { CommandMenu } from "../../composites/command";
-import { Button } from "../../ui/button";
-import { MainNav } from "./desktop";
-import { MobileNav } from "./mobile";
-import { UserNav } from "./user";
+import {
+  ListOrderedIcon,
+  LogInIcon,
+  MoonIcon,
+  ShoppingBasketIcon,
+  SunIcon,
+} from 'lucide-react';
+import { useTheme } from 'next-themes';
+import Link from 'next/link';
+import { CommandMenu } from '../../composites/command';
+import { Button } from '../../ui/button';
+import { MainNav } from './desktop';
+import { MobileNav } from './mobile';
+import { UserNav } from './user';
 
 export default function Header() {
   return (
@@ -20,6 +26,7 @@ export default function Header() {
             <CommandMenu />
           </div>
           <CartNav />
+          <ViewOrders />
           <ThemeToggle />
           <UserNav />
           <LoginDialog />
@@ -34,6 +41,16 @@ export function CartNav() {
     <Link href="/cart">
       <Button size="icon" variant="outline" className="h-9">
         <ShoppingBasketIcon className="h-4" />
+      </Button>
+    </Link>
+  );
+}
+
+export function ViewOrders() {
+  return (
+    <Link href="/orders">
+      <Button size="icon" variant="outline" className="h-9">
+        <ListOrderedIcon className="h-4" />
       </Button>
     </Link>
   );
@@ -57,9 +74,9 @@ function ThemeToggle() {
     <Button
       variant="outline"
       size="icon"
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
     >
-      {resolvedTheme === "dark" ? (
+      {resolvedTheme === 'dark' ? (
         <SunIcon className="h-4" />
       ) : (
         <MoonIcon className="h-4" />

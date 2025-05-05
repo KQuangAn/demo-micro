@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- Create Currencies Table
 CREATE TABLE currencies (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -10,17 +12,8 @@ CREATE TABLE currencies (
 INSERT INTO currencies (name) 
 VALUES ('USD'), ('EUR'), ('VND'), ('JPY');
 
--- Create Prices Table (For Multiple Currencies)
-CREATE TABLE prices (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  product_id UUID NOT NULL REFERENCES inventory(id) ON DELETE CASCADE, -- Link to inventory item
-  currency_id UUID NOT NULL REFERENCES currencies(id), -- Link to the currency
-  price NUMERIC NOT NULL CHECK (price >= 0), -- Price for the product in the given currency
-  start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- When the price became effective
-  end_date TIMESTAMP, -- When the price stops being effective, null means current
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Create Category Table ?
+ 
 
 -- Create Inventory Table (Fix UUID Type)
 CREATE TABLE inventory (
@@ -31,25 +24,37 @@ CREATE TABLE inventory (
     images TEXT[] NOT NULL,
     categories TEXT[] NOT NULL,
     quantity INT NOT NULL,
-    discount FLOAT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- Insert Inventory Items (Fixed price reference, move price to prices table)
-INSERT INTO inventory (title, brand, description, images, categories, quantity, discount, created_at, updated_at) 
+INSERT INTO inventory (title, brand, description, images, categories, quantity, created_at, updated_at) 
 VALUES
   ('Widget A', 'Brand X', 'High-quality widget for various applications', 
    ARRAY['https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg'], 
-   ARRAY['Tools', 'Gadgets'], 100, 0.10, NOW(), NOW()),
+   ARRAY['Tools', 'Gadgets'], 100, NOW(), NOW()),
   ('Widget B', 'Brand Y', 'Economical widget with basic features', 
    ARRAY['https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg'], 
-   ARRAY['Tools'], 200, 0.05, NOW(), NOW()),
+   ARRAY['Tools'], 200, NOW(), NOW()),
   ('Gadget X', 'Brand Z', 'Advanced gadget with innovative technology', 
    ARRAY['https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg'], 
-   ARRAY['Electronics'], 50, 0.15, NOW(), NOW()),
+   ARRAY['Electronics'], 50, NOW(), NOW()),
   ('Gadget Y', 'Brand X', 'Compact gadget suitable for everyday use', 
    ARRAY['https://fakestoreapi.com/img/81fPKd-2AYL._AC_SL1500_.jpg'], 
-   ARRAY['Electronics', 'Accessories'], 75, 0.20, NOW(), NOW());
+   ARRAY['Electronics', 'Accessories'], 75, NOW(), NOW());
+
+  
+  -- Create Prices Table (For Multiple Currencies)
+CREATE TABLE prices (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  product_id UUID NOT NULL REFERENCES inventory(id) ON DELETE CASCADE, -- Link to inventory item
+  currency_id UUID NOT NULL REFERENCES currencies(id), -- Link to the currency
+  price NUMERIC NOT NULL CHECK (price >= 0), -- Price for the product in the given currency
+  start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- When the price became effective
+  end_date TIMESTAMP, -- When the price stops being effective, null means current
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 -- Insert Prices for Products in Different Currencies
 -- Widget A with different prices

@@ -33,12 +33,12 @@ CREATE TABLE order_details (
     orders_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
     product_id UUID NOT NULL,
     quantity INT NOT NULL CHECK (quantity >= 1),
+    price NUMERIC NOT NULL CHECK (price >= 0),
     currency_id UUID NOT NULL REFERENCES currencies(id),
     status order_detail_status NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
 
 -- Trigger function to update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -74,14 +74,13 @@ VALUES
     ('550e8400-e29b-41d4-a716-446655440004');
 
 -- Seed order details
-INSERT INTO order_details (orders_id, product_id, quantity,currency_id,  status)
+INSERT INTO order_details (orders_id, product_id, quantity, price, currency_id, status)
 VALUES
-    ((SELECT id FROM orders WHERE user_id = '550e8400-e29b-41d4-a716-446655440000'), '550e8400-e29b-41d4-a716-446655440001', 2,(SELECT id FROM currencies WHERE name = 'USD') ,'pending'),
-    ((SELECT id FROM orders WHERE user_id = '550e8400-e29b-41d4-a716-446655440002'), '550e8400-e29b-41d4-a716-446655440003', 5,(SELECT id FROM currencies WHERE name = 'USD') ,'pending'),
-    ((SELECT id FROM orders WHERE user_id = '550e8400-e29b-41d4-a716-446655440004'), '550e8400-e29b-41d4-a716-446655440005', 1,(SELECT id FROM currencies WHERE name = 'USD') ,'completed');
+    ((SELECT id FROM orders WHERE user_id = '550e8400-e29b-41d4-a716-446655440000'), '550e8400-e29b-41d4-a716-446655440001', 2, 19.99, (SELECT id FROM currencies WHERE name = 'USD'), 'pending'),
+    ((SELECT id FROM orders WHERE user_id = '550e8400-e29b-41d4-a716-446655440002'), '550e8400-e29b-41d4-a716-446655440003', 5, 49.99, (SELECT id FROM currencies WHERE name = 'USD'), 'pending'),
+    ((SELECT id FROM orders WHERE user_id = '550e8400-e29b-41d4-a716-446655440004'), '550e8400-e29b-41d4-a716-446655440005', 1, 9.99, (SELECT id FROM currencies WHERE name = 'USD'), 'completed');
 
 -- Optional: quick check
 SELECT * FROM orders;
 
 SELECT * FROM order_details;
-

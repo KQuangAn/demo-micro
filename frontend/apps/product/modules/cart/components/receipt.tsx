@@ -1,48 +1,49 @@
-"use client";
+'use client';
 
-import { Button } from "../../components/ui/button";
+import { Button } from '../../components/ui/button';
 import {
   Card,
   CardHeader,
   CardContent,
   CardFooter,
-} from "../../components/ui/card";
-import { isVariableValid } from "../../lib/utils";
-import { useCartContext } from "../../providers/cart-provider";
-import { Separator } from "../../components/ui/separator";
+} from '../../components/ui/card';
+import { cn, isVariableValid } from '../../lib/utils';
+import { useCartContext } from '../../providers/cart-provider';
+import { Separator } from '../../components/ui/separator';
 import {
   client,
   RESERVE_INVENTORY,
   ReserveInventoryInputSchema,
   TReserveInventoryInput,
-} from "@repo/apollo-client";
-import { useMutation } from "@apollo/client";
+} from '@repo/apollo-client';
+import { useMutation } from '@apollo/client';
+import { useState } from 'react';
 
-const tempUserid = "550e8400-e29b-41d4-a716-446655440004";
+const tempUserid = '550e8400-e29b-41d4-a716-446655440004';
 
 export function Receipt() {
-  //const { authenticated } = useAuthenticated();
+  const [isLoading, setIsLoading] = useState(false);
   const { loading, cart, refreshCart, dispatchCart } = useCartContext();
-  // const [createOrder, { data, loading: loadingMutation, error }] =
-  //   useMutation(CREATE_ORDER);
 
   const handleCheckout = async () => {
-    const reserveInput: TReserveInventoryInput = {
-      userId: tempUserid,
-      products: cart.items.map((item) => ({
-        productId: item.productId,
-        quantity: item.count,
-        currency: "USD",
-      })),
-    };
-
-    const parsed = ReserveInventoryInputSchema.safeParse(reserveInput);
-
-    if (!parsed.success) {
-      console.error("Validation failed", parsed.error);
-      return;
-    }
     try {
+      setIsLoading(true);
+
+      const reserveInput: TReserveInventoryInput = {
+        userId: tempUserid,
+        products: cart.items.map((item) => ({
+          productId: item.productId,
+          quantity: item.count,
+          currency: 'USD',
+        })),
+      };
+
+      const parsed = ReserveInventoryInputSchema.safeParse(reserveInput);
+
+      if (!parsed.success) {
+        console.error('Validation failed', parsed.error);
+        return;
+      }
       // const createOrderPromises = ordersToCreate.map((order) =>
       //   createOrder({ variables: order })
       // );
@@ -54,9 +55,15 @@ export function Receipt() {
       });
 
       //const result = await Promise.all(createOrderPromises);
-      console.log("Batch order creation results:", result);
+      console.log('Batch order creation results:', result);
+      //clear cart
+      dispatchCart({
+        items: [],
+      });
     } catch (error) {
-      console.error("Error creating orders in batch:", error);
+      console.error('Error creating orders in batch:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
   //console.log(data, loadingMutation, error);
@@ -85,7 +92,7 @@ export function Receipt() {
   }
 
   return (
-    <Card className={loading ? "animate-pulse" : ""}>
+    <Card className={loading ? 'animate-pulse' : ''}>
       <CardHeader className="p-4 pb-0">
         <h2 className="font-bold tracking-tight">Receipt</h2>
       </CardHeader>
@@ -114,10 +121,10 @@ export function Receipt() {
       <CardFooter>
         <Button
           onClick={handleCheckout}
-          disabled={!isVariableValid(cart?.items) || cart["items"].length === 0}
-          className="w-full"
+          disabled={!isVariableValid(cart?.items) || cart['items'].length === 0}
+          className={cn('w-full', isLoading && 'bg-gray-300')}
         >
-          Checkout
+          {isLoading ? 'Loading' : 'Checkout'}
         </Button>
       </CardFooter>
     </Card>

@@ -37,8 +37,7 @@ export default async function Index({
     client.query({ query: GET_ALL_INVENTORY }),
     client.query({ query: GET_ALL_CATEGORY }),
   ]);
-  console.log(productsResult, 1231232);
-  console.log(productsResult?.value, 1231232);
+
   if (
     productsResult?.status == 'rejected' ||
     categoriesResult?.status == 'rejected'
@@ -48,7 +47,6 @@ export default async function Index({
 
   const products = productsResult?.value?.data?.allInventory;
   const categories = categoriesResult?.value?.data?.allInventory;
-  console.log(products, categories);
 
   return (
     <div className="flex flex-col border-neutral-200 dark:border-neutral-700">

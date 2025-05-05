@@ -6,3 +6,4 @@ export * from './order/query.js';
 export * from './order/mutation.js';
 export * from './order/types.js';
 export * from './types/index.js';
+export * from './generated/graphql.js';

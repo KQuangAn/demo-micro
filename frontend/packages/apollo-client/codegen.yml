@@ -1,0 +1,10 @@
+schema:
+  - 'http://localhost:8080/query':
+      headers:
+        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImEiLCJleHAiOjE3NDY2ODg5MTJ9.36SY3bIUNLSidVTqq9z8UXkuUWliKF0Frs0uYqkD1_A' # Replace with your actual token
+generates:
+  packages/apollo-client/src/generated/graphql.ts:
+    plugins:
+      - 'typescript'
+      - 'typescript-operations'
+      - 'typescript-react-apollo'

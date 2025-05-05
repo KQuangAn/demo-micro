@@ -57,6 +57,16 @@ func GenerateToken(username string) (string, error) {
 	return token.SignedString(mySigningKey)
 }
 
+type LoginResponse struct {
+	Message string       `json:"message"`
+	Data    UserResponse `json:"data"`
+}
+
+type UserResponse struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+}
+
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var creds models.Credentials
 	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
@@ -95,7 +105,21 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Logged in successfully"})
+
+	userId, err := client.HGet(ctx, creds.Username, "user_id").Result()
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "User id not found", err)
+		return
+	}
+	response := LoginResponse{
+		Message: "Logged in successfully",
+		Data: UserResponse{
+			ID:       userId,
+			Username: creds.Username,
+		},
+	}
+
+	json.NewEncoder(w).Encode(response)
 }
 
 func TokenValid(next http.Handler) http.Handler {

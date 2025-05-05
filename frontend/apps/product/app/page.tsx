@@ -19,12 +19,15 @@ import {
   GET_ALL_INVENTORY,
   client,
 } from '@repo/apollo-client';
+import { getAuth } from '@repo/auth';
 
 export default async function Index({
   searchParams,
 }: {
   searchParams: unknown;
 }) {
+  const session = await getAuth()
+  console.log(session)
   const {
     sort,
     isAvailable,

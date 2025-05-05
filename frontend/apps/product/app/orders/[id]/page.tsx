@@ -39,12 +39,12 @@ const OrdersIdPage = async ({
       {items.map((item) => (
         <Link key={item.id} href={`/products/${item.productId}`}>
           <Card className="p-2 flex flex-col gap-2">
-            <CardContent>ProductId {item.productId}</CardContent>
-            <CardContent>Order price{item.price}</CardContent>
-            <CardContent>Quantiity {item.quantity}</CardContent>
-            <CardContent>Currency {item.currency}</CardContent>
-            <CardContent>Created at {item.status}</CardContent>
-            <CardContent>Created at {item.createdAt}</CardContent>
+            <CardContent>ProductId: {item.productId}</CardContent>
+            <CardContent>Order price:{item.price}</CardContent>
+            <CardContent>Quantiity: {item.quantity}</CardContent>
+            <CardContent>Currency: {item.currency}</CardContent>
+            <CardContent>Status: {item.status}</CardContent>
+            <CardContent>Created at: {item.createdAt}</CardContent>
           </Card>
         </Link>
       ))}

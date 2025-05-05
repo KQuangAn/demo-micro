@@ -27,7 +27,6 @@ export function ButtonComponent({ product }: TInventory) {
   );
   console.log(cart);
   async function onAddToCart() {
-    console.log('assdasdfdd');
     try {
       const localCart = getLocalCart() as TCart;
 

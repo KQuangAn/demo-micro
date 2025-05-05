@@ -8,8 +8,7 @@ export default function Providers({
   ...args
 }: {
   children: React.ReactNode;
-  args: ThemeProviderProps;
-}) {
+} & ThemeProviderProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

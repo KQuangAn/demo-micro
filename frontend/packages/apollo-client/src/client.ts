@@ -5,6 +5,6 @@ export const client = new ApolloClient({
   cache: new InMemoryCache(),
   headers: {
     Authorization:
-      'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImEiLCJleHAiOjE3NDY2ODg5MTJ9.36SY3bIUNLSidVTqq9z8UXkuUWliKF0Frs0uYqkD1_A',
+      'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImEiLCJleHAiOjE3NDY3MTM4NDV9.1x9DwGe4TqAUIa-7GnHupPoodo8RQYDKFfLLZLCl43M',
   },
 });

@@ -18,6 +18,6 @@
     "check-types": "tsc --noEmit --project tsconfig.build.json"
   },
   "dependencies": {
-    "next-auth": "4.24.11"
+    "next-auth": "^4.24.11"
   }
 }

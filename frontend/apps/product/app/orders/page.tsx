@@ -3,14 +3,14 @@ import {
   GET_ORDERS_BY_USER_ID,
   QueryGetOrdersByUserIdArgs,
   Query,
-} from "@repo/apollo-client";
-import { getAuth } from "@repo/auth";
-import { Card, CardContent } from "../../modules/components/ui/card";
-import { Button } from "../../modules/components/ui/button";
-import Link from "next/link";
+} from '@repo/apollo-client';
+import { Card, CardContent } from '../../modules/components/ui/card';
+import { Button } from '../../modules/components/ui/button';
+import Link from 'next/link';
+import { getCurrentUser } from '../../modules/server';
 
 const OrdersPage = async () => {
-  const session = await getAuth();
+  const session = await getCurrentUser();
   const variables: QueryGetOrdersByUserIdArgs = {
     userId: session?.user?.id,
     first: 10,
@@ -18,13 +18,13 @@ const OrdersPage = async () => {
   };
 
   const [ordersResult] = await Promise.allSettled([
-    client.query<{ getOrdersByUserId: Query["getOrdersByUserId"] }>({
+    client.query<{ getOrdersByUserId: Query['getOrdersByUserId'] }>({
       query: GET_ORDERS_BY_USER_ID,
       variables,
     }),
   ]);
 
-  if (ordersResult.status !== "fulfilled") {
+  if (ordersResult.status !== 'fulfilled') {
     return <div>Erorr fetching</div>;
   }
 

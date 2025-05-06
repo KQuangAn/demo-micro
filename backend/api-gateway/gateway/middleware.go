@@ -11,19 +11,26 @@ import (
 
 func JWTMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var tokenString string
+
 		authorizationHeader := r.Header.Get("Authorization")
-		if authorizationHeader == "" {
-			http.Error(w, "Authorization header is missing", http.StatusUnauthorized)
-			return
+		if authorizationHeader != "" {
+			tokenString = strings.TrimPrefix(authorizationHeader, "Bearer ")
+			if tokenString == authorizationHeader {
+				http.Error(w, "Authorization token is missing", http.StatusUnauthorized)
+				return
+			}
+		} else {
+			cookie, err := r.Cookie("token")
+			if err == nil {
+				tokenString = cookie.Value
+			} else {
+				http.Error(w, "Authorization header or cookie is missing", http.StatusUnauthorized)
+				return
+			}
 		}
 
-		tokenString := strings.TrimPrefix(authorizationHeader, "Bearer ")
-		if tokenString == authorizationHeader {
-			http.Error(w, "Authorization token is missing", http.StatusUnauthorized)
-			return
-		}
-
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}

@@ -10,30 +10,20 @@ const RegisterPage = () => {
   const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
 
-  useEffect(() => {
-    // chechking if user has already registered redirect to home page
-    if (sessionStatus === 'authenticated') {
-      router.replace('/');
-    }
-  }, [sessionStatus, router]);
+  // useEffect(() => {
+  //   // chechking if user has already registered redirect to home page
+  //   if (sessionStatus === 'authenticated') {
+  //     router.replace('/');
+  //   }
+  // }, [sessionStatus, router]);
 
-  const isValidEmail = (email: string) => {
-    const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
-    return emailRegex.test(email);
-  };
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    const email = e.target[2].value;
-    const password = e.target[3].value;
-    const confirmPassword = e.target[4].value;
+    const username = e.target[0].value;
+    const password = e.target[1].value;
+    const confirmPassword = e.target[2].value;
 
-    if (!isValidEmail(email)) {
-      setError('Email is invalid');
-      toast.error('Email is invalid');
-      return;
-    }
-
-    if (!password || password.length < 8) {
+    if (!password || password.length < 1) {
       setError('Password is invalid');
       toast.error('Password is invalid');
       return;
@@ -46,21 +36,24 @@ const RegisterPage = () => {
     }
 
     try {
+      const url = (process.env.AUTH_ENDPOINT ||
+        'http://localhost:8080' + '/register') as string;
       // sending API request for registering user
-      const res = await fetch('/api/register', {
+
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email,
+          username,
           password,
         }),
       });
 
       if (res.status === 400) {
-        toast.error('This email is already registered');
-        setError('The email already in use');
+        toast.error('This is already registered');
+        setError('Slready in use');
       }
       if (res.status === 200) {
         setError('');
@@ -91,53 +84,17 @@ const RegisterPage = () => {
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div>
                 <label
-                  htmlFor="name"
+                  htmlFor="username"
                   className="block text-sm font-medium leading-6 text-gray-900"
                 >
-                  Name
+                  Username
                 </label>
                 <div className="mt-2">
                   <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    required
-                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="lastname"
-                  className="block text-sm font-medium leading-6 text-gray-900"
-                >
-                  Lastname
-                </label>
-                <div className="mt-2">
-                  <input
-                    id="lastname"
-                    name="lastname"
-                    type="text"
-                    required
-                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-medium leading-6 text-gray-900"
-                >
-                  Email address
-                </label>
-                <div className="mt-2">
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
+                    id="username"
+                    name="username"
+                    type="username"
+                    autoComplete="username"
                     required
                     className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                   />

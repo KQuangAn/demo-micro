@@ -65,6 +65,7 @@ type LoginResponse struct {
 type UserResponse struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
+	Token    string `json:"token"`
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -116,6 +117,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Data: UserResponse{
 			ID:       userId,
 			Username: creds.Username,
+			Token:    token,
 		},
 	}
 

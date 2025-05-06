@@ -1,23 +1,24 @@
-"use client";
+'use client';
 
-import { Button } from "../../components/ui/button";
+import { Button } from '../../components/ui/button';
 import {
   Card,
   CardHeader,
   CardContent,
   CardFooter,
-} from "../../components/ui/card";
-import { cn, isVariableValid } from "../../lib/utils";
-import { useCartContext } from "../../providers/cart-provider";
-import { Separator } from "../../components/ui/separator";
+} from '../../components/ui/card';
+import { cn, isVariableValid } from '../../lib/utils';
+import { useCartContext } from '../../providers/cart-provider';
+import { Separator } from '../../components/ui/separator';
 import {
   client,
   RESERVE_INVENTORY,
   ReserveInventoryInputSchema,
   TReserveInventoryInput,
-} from "@repo/apollo-client";
-import { useState } from "react";
-import { useSession } from "@repo/auth";
+} from '@repo/apollo-client';
+import { useState } from 'react';
+import { useSession } from '@repo/auth';
+import { invalidatePath } from '../../server';
 
 export function Receipt() {
   const session = useSession();
@@ -28,20 +29,21 @@ export function Receipt() {
   const handleCheckout = async () => {
     try {
       setIsLoading(true);
+      console.log(session.data);
 
       const reserveInput: TReserveInventoryInput = {
         userId: session.data?.user?.id,
         products: cart.items.map((item) => ({
           productId: item.productId,
           quantity: item.count,
-          currency: "USD",
+          currency: 'USD',
         })),
       };
 
       const parsed = ReserveInventoryInputSchema.safeParse(reserveInput);
 
       if (!parsed.success) {
-        console.error("Validation failed", parsed.error);
+        console.error('Validation failed', parsed.error);
         return;
       }
       // const createOrderPromises = ordersToCreate.map((order) =>
@@ -55,13 +57,14 @@ export function Receipt() {
       });
 
       //const result = await Promise.all(createOrderPromises);
-      console.log("Batch order creation results:", result);
+      console.log('Batch order creation results:', result);
       //clear cart
       dispatchCart({
         items: [],
       });
+      await invalidatePath('/');
     } catch (error) {
-      console.error("Error creating orders in batch:", error);
+      console.error('Error creating orders in batch:', error);
     } finally {
       setIsLoading(false);
     }
@@ -92,7 +95,7 @@ export function Receipt() {
   }
 
   return (
-    <Card className={loading ? "animate-pulse" : ""}>
+    <Card className={loading ? 'animate-pulse' : ''}>
       <CardHeader className="p-4 pb-0">
         <h2 className="font-bold tracking-tight">Receipt</h2>
       </CardHeader>
@@ -121,10 +124,10 @@ export function Receipt() {
       <CardFooter>
         <Button
           onClick={handleCheckout}
-          disabled={!isVariableValid(cart?.items) || cart["items"].length === 0}
-          className={cn("w-full", isLoading && "bg-gray-300")}
+          disabled={!isVariableValid(cart?.items) || cart['items'].length === 0}
+          className={cn('w-full', isLoading && 'bg-gray-300')}
         >
-          {isLoading ? "Loading" : "Checkout"}
+          {isLoading ? 'Loading' : 'Checkout'}
         </Button>
       </CardFooter>
     </Card>

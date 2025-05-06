@@ -14,6 +14,7 @@ import { Button } from '../../ui/button';
 import { MainNav } from './desktop';
 import { MobileNav } from './mobile';
 import { UserNav } from './user';
+import { signOut, useSession } from '@repo/auth';
 
 export default function Header() {
   return (
@@ -54,16 +55,21 @@ export function ViewOrders() {
       </Button>
     </Link>
   );
-}
+} 
 
 function LoginDialog() {
+  const session = useSession();
   return (
-    <Link href="/login">
-      <Button className="font-medium flex gap-2">
+    <div className="flex flex-col items-center">
+      Hello {session?.data?.user?.username}
+      <Button
+        className="font-medium flex gap-2 cursor-pointer"
+        onClick={() => signOut()}
+      >
         <LogInIcon className="h-4" />
-        <p>Login</p>
+        <p>Sign out</p>
       </Button>
-    </Link>
+    </div>
   );
 }
 

@@ -19,15 +19,15 @@ import {
   GET_ALL_INVENTORY,
   client,
 } from '@repo/apollo-client';
-import { getAuth } from '@repo/auth';
+import { getCurrentUser } from '../modules/server';
 
 export default async function Index({
   searchParams,
 }: {
   searchParams: unknown;
 }) {
-  const session = await getAuth()
-  console.log(session)
+  const session = await getCurrentUser();
+  console.log(session);
   const {
     sort,
     isAvailable,
@@ -40,7 +40,7 @@ export default async function Index({
     client.query({ query: GET_ALL_INVENTORY }),
     client.query({ query: GET_ALL_CATEGORY }),
   ]);
-
+  console.log(productsResult);
   if (
     productsResult?.status == 'rejected' ||
     categoriesResult?.status == 'rejected'

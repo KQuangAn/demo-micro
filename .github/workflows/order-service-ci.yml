@@ -25,7 +25,7 @@ jobs:
         run: gosec ./... > gosec_report.txt || true
 
       - name: Upload gosec report
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: gosec-report
           path: gosec_report.txt

@@ -1,0 +1,24 @@
+input {
+  file {
+    path => "/path/to/your/logs/*.log"  # Specify the path to your log file(s)
+    start_position => "beginning"        # Read the log file from the beginning
+    sincedb_path => "/dev/null"          # Disable sincedb for testing (not recommended for production)
+    codec => "plain"                     # Specify the codec used for reading the logs
+  }
+}
+
+filter {
+  # Optional: Add any filters to process the logs here
+}
+
+output {
+  elasticsearch {
+    hosts => ["http://localhost:9200"]   # Elasticsearch host
+    index => "logs-%{+YYYY.MM.dd}"       # Index name pattern
+  }
+
+  # Optional: Output to stdout for debugging
+  stdout { 
+    codec => rubydebug
+  }
+}

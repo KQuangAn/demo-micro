@@ -62,7 +62,7 @@ jobs:
   backend_deployment:
     name: Backend Deployment
     needs: [changes]
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.pipeline == 'true' || needs.changes.outputs.schema_validation == 'true'
+    if: needs.changes.outputs.api-gateway == 'true' || needs.changes.outputs.pipeline == 'true' || needs.changes.outputs.inventory-service == 'true' || needs.changes.outputs.pipeline == 'true' || needs.changes.outputs.notification-service == 'true'
     uses: './.github/workflows/backend_deployment.yml'
     with:
       project_name: customer-app
@@ -72,7 +72,7 @@ jobs:
       WIZ_CliENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
       WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
 
-  app_form_deployment:
+  frontend_deployment:
     name: Application Form Frontend Deployment
     needs: [changes]
     if: needs.changes.outputs.application_form == 'true' || needs.changes.outputs.pipeline == 'true' || needs.changes.outputs.schema_validation == 'true' || needs.changes.outputs.form_components == 'true'
@@ -102,38 +102,5 @@ jobs:
       PROD_S3_BUCKET: ${{ secrets.PROD_S3_BUCKET }}
       DATADOG_RUM_APPLICATION_ID: ${{ secrets.DATADOG_RUM_APPLICATION_ID }}
       DATADOG_RUM_CLIENT_TOKEN: ${{ secrets.DATADOG_RUM_CLIENT_TOKEN }}
-      HYGRAPH_TOKEN: ${{ secrets.HYGRAPH_TOKEN }}
-      HYGRAPH_URL: ${{ secrets.HYGRAPH_URL }}
-
-  cc_deployment:
-    name: Customer Connect Frontend Deployment
-    needs: [changes]
-    if: needs.changes.outputs.customer_connect == 'true' || needs.changes.outputs.pipeline == 'true'
-    uses: './.github/workflows/static_app.yml'
-    with:
-      project_name: customer-connect
-    secrets:
-      sonar_token: ${{ secrets.SONAR_TOKEN }}
-      npm_token: ${{ secrets.NPM_TOKEN }}
-      STAGING_AUTH_CLIENT_ID: ${{ secrets.STAGING_AUTH_CLIENT_ID }}
-      STAGING_AUTH_DOMAIN: ${{ secrets.STAGING_AUTH_DOMAIN }}
-      STAGING_LAUNCHDARKLY_CLIENT_ID: ${{ secrets.STAGING_LAUNCHDARKLY_CLIENT_ID }}
-      STAGING_SEGMENT_WRITEKEY: ${{ secrets.STAGING_CONNECT_SEGMENT_WRITE_KEY }}
-      STAGING_DISTRIBUTION_ID: ${{ secrets.STAGING_CONNECT_DISTRIBUTION_ID }}
-      STAGING_S3_BUCKET: ${{ secrets.STAGING_CONNECT_S3_BUCKET }}
-      UAT_AUTH_CLIENT_ID: ${{ secrets.UAT_AUTH_CLIENT_ID }}
-      UAT_AUTH_DOMAIN: ${{ secrets.UAT_AUTH_DOMAIN }}
-      UAT_LAUNCHDARKLY_CLIENT_ID: ${{ secrets.UAT_LAUNCHDARKLY_CLIENT_ID }}
-      UAT_SEGMENT_WRITEKEY: ${{ secrets.UAT_CONNECT_SEGMENT_WRITE_KEY }}
-      UAT_DISTRIBUTION_ID: ${{ secrets.UAT_CONNECT_DISTRIBUTION_ID }}
-      UAT_S3_BUCKET: ${{ secrets.UAT_CONNECT_S3_BUCKET }}
-      PROD_AUTH_CLIENT_ID: ${{ secrets.PROD_AUTH_CLIENT_ID }}
-      PROD_AUTH_DOMAIN: ${{ secrets.PROD_AUTH_DOMAIN }}
-      PROD_LAUNCHDARKLY_CLIENT_ID: ${{ secrets.PROD_LAUNCHDARKLY_CLIENT_ID }}
-      PROD_SEGMENT_WRITEKEY: ${{ secrets.PROD_CONNECT_SEGMENT_WRITE_KEY }}
-      PROD_DISTRIBUTION_ID: ${{ secrets.PROD_CONNECT_DISTRIBUTION_ID }}
-      PROD_S3_BUCKET: ${{ secrets.PROD_CONNECT_S3_BUCKET }}
-      DATADOG_RUM_APPLICATION_ID: ${{ secrets.DATADOG_RUM_CONNECT_APPLICATION_ID }}
-      DATADOG_RUM_CLIENT_TOKEN: ${{ secrets.DATADOG_RUM_CONNECT_CLIENT_TOKEN }}
       HYGRAPH_TOKEN: ${{ secrets.HYGRAPH_TOKEN }}
       HYGRAPH_URL: ${{ secrets.HYGRAPH_URL }}

@@ -11,7 +11,7 @@ export const GET_INVENTORY_ITEMS_BY_ID = gql`
       categories
       quantity
       price
-      discount
+      currencyName
       createdAt
       updatedAt
     }
@@ -19,10 +19,11 @@ export const GET_INVENTORY_ITEMS_BY_ID = gql`
 `;
 
 export const GET_INVENTORY_ITEMS_PRICE_AND_QUANTITY_BY_ID = gql`
-  query GetInventory($id: ID!) {
+  query GetInventoryPriceAndQuantity($id: ID!) {
     getInventory(id: $id) {
       quantity
       price
+      currencyName
     }
   }
 `;
@@ -38,7 +39,7 @@ export const GET_ALL_INVENTORY = gql`
       categories
       quantity
       price
-      discount
+      currencyName
       createdAt
       updatedAt
     }

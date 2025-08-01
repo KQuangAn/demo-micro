@@ -1,13 +1,20 @@
-"use client";
+'use client';
 
-import { LogInIcon, MoonIcon, ShoppingBasketIcon, SunIcon } from "lucide-react";
-import { useTheme } from "next-themes";
-import Link from "next/link";
-import { CommandMenu } from "../../composites/command";
-import { Button } from "../../ui/button";
-import { MainNav } from "./desktop";
-import { MobileNav } from "./mobile";
-import { UserNav } from "./user";
+import {
+  ListOrderedIcon,
+  LogInIcon,
+  MoonIcon,
+  ShoppingBasketIcon,
+  SunIcon,
+} from 'lucide-react';
+import { useTheme } from 'next-themes';
+import Link from 'next/link';
+import { CommandMenu } from '../../composites/command';
+import { Button } from '../../ui/button';
+import { MainNav } from './desktop';
+import { MobileNav } from './mobile';
+import { UserNav } from './user';
+import { signOut, useSession } from '@repo/auth';
 
 export default function Header() {
   return (
@@ -20,6 +27,7 @@ export default function Header() {
             <CommandMenu />
           </div>
           <CartNav />
+          <ViewOrders />
           <ThemeToggle />
           <UserNav />
           <LoginDialog />
@@ -39,14 +47,29 @@ export function CartNav() {
   );
 }
 
-function LoginDialog() {
+export function ViewOrders() {
   return (
-    <Link href="/login">
-      <Button className="font-medium flex gap-2">
-        <LogInIcon className="h-4" />
-        <p>Login</p>
+    <Link href="/orders">
+      <Button size="icon" variant="outline" className="h-9">
+        <ListOrderedIcon className="h-4" />
       </Button>
     </Link>
+  );
+} 
+
+function LoginDialog() {
+  const session = useSession();
+  return (
+    <div className="flex flex-col items-center">
+      Hello {session?.data?.user?.username}
+      <Button
+        className="font-medium flex gap-2 cursor-pointer"
+        onClick={() => signOut()}
+      >
+        <LogInIcon className="h-4" />
+        <p>Sign out</p>
+      </Button>
+    </div>
   );
 }
 
@@ -57,9 +80,9 @@ function ThemeToggle() {
     <Button
       variant="outline"
       size="icon"
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
     >
-      {resolvedTheme === "dark" ? (
+      {resolvedTheme === 'dark' ? (
         <SunIcon className="h-4" />
       ) : (
         <MoonIcon className="h-4" />

@@ -73,3 +73,18 @@ export const REMOVE_INVENTORY_ITEM = (id: string) => gql`
     }
   }
 `;
+
+export const RESERVE_INVENTORY = gql`
+  mutation HandleReserveInventory(
+    $reserveInventoryInput: ReserveInventoryInput!
+  ) {
+    handleReserveInventory(reserveInventoryInput: $reserveInventoryInput) {
+      id
+      quantity
+      price
+      currencyName
+      createdAt
+      updatedAt
+    }
+  }
+`;

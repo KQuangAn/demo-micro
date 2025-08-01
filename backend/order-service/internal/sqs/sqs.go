@@ -3,17 +3,13 @@ package sqs
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
-	"orderservice/internal/models"
-	"orderservice/internal/services"
-	"orderservice/internal/utils"
-	"orderservice/internal/validator"
-	"orderservice/pkg/enums"
-	"os"
-	"os/signal"
 	"sync"
-	"syscall"
+	"time"
+
+	eventhandler "orderservice/internal/event_handler"
+	"orderservice/internal/models"
+	"orderservice/internal/utils"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -21,16 +17,26 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
-var client *sqs.Client
-
 var (
+	client                *sqs.Client
 	MAX_NUMBER_OF_MESSAGE = utils.GetEnv("MAX_NUMBER_OF_MESSAGE", int32(10))
 	WAIT_TIME_SECONDS     = utils.GetEnv("WAIT_TIME_SECONDS", int32(10))
-	MAX_CONSUMER          = utils.GetEnv("MAX_CONSUMER", 5)
+	TIMEOUT               = time.Duration(utils.GetEnv("TIMEOUT", int32(30))) * time.Second
 )
 
 func init() {
-	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithEndpointResolver(aws.EndpointResolverFunc(
+	ctx, cancel := context.WithTimeout(context.Background(), TIMEOUT)
+	defer cancel()
+
+	var err error
+	client, err = createSQSClient(ctx)
+	if err != nil {
+		log.Fatalf("Failed to create SQS client: %v", err)
+	}
+}
+
+func createSQSClient(ctx context.Context) (*sqs.Client, error) {
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithEndpointResolver(aws.EndpointResolverFunc(
 		func(service, region string) (aws.Endpoint, error) {
 			if service == sqs.ServiceID && region == "ap-southeast-1" {
 				return aws.Endpoint{
@@ -40,141 +46,92 @@ func init() {
 			return aws.Endpoint{}, &aws.EndpointNotFoundError{}
 		},
 	)))
-
 	if err != nil {
-		log.Fatalf("unable to load SDK config, %v", err)
+		return nil, err
 	}
-	client = sqs.NewFromConfig(cfg)
-
+	return sqs.NewFromConfig(cfg), nil
 }
 
-func handleMessage(message *types.Message, msgValidator *validator.Validator, orderService *services.OrderService) error {
-	var event models.EventBridgeMessage
-	log.Print("Received message", *message.Body)
-
-	valid := msgValidator.ValidateEvent(message, &event)
-
-	if !valid {
-		return fmt.Errorf("invalid event")
-	}
-
-	ctx := context.Background()
-
-	switch event.DetailType {
-	case enums.EVENT_TYPE.InventoryReserved.String():
-		detail := validator.ValidateModel(msgValidator, event.Detail, &models.InventoryReservedEventDetail{})
-		if detail == nil {
-			return fmt.Errorf("Failed to validate event", enums.EVENT_TYPE.InventoryReserved.String())
-		}
-
-		log.Println("InventoryReserved")
-		order, err := orderService.HandleInventoryReservedEvent(ctx, detail.OrderID, detail.ProductID,
-			detail.Quantity)
-		if err != nil {
-			fmt.Printf("Error updating order: %v\n", err)
-		} else {
-			fmt.Printf("Order updated successfully: %+v\n", order)
-		}
-
-	case enums.EVENT_TYPE.InventoryReservationFailed.String():
-		detail := validator.ValidateModel(msgValidator, event.Detail, &models.InventoryReservedFailEventDetail{})
-		if detail == nil {
-			return fmt.Errorf("Failed to validate event", enums.EVENT_TYPE.InventoryReservationFailed.String())
-		}
-
-		order, err := orderService.CancelOrderInsufficentInventory(ctx, detail.OrderID)
-		if err != nil {
-			fmt.Printf("Error cancelling order: %v\n", err)
-		} else {
-			fmt.Printf("Order cancelled successfully: %+v\n", order)
-		}
-	case enums.EVENT_TYPE.NotificationSentSuccess.String():
-		log.Println("NotificationSentSuccess")
-		detail := validator.ValidateModel(msgValidator, event.Detail, &models.NotificationEventDetail{})
-		if detail == nil {
-			return fmt.Errorf("Failed to validate event", enums.EVENT_TYPE.NotificationSentSuccess.String())
-		}
-		log.Println(*detail)
-
-		if detail.EventType == enums.EVENT_TYPE.OrderProcessed.String() {
-			var messageDetail models.NotificationMessageDetail
-			if err := json.Unmarshal([]byte(detail.Message), &messageDetail); err != nil {
-				return fmt.Errorf("Error unmarshalling message:", err)
-			}
-			log.Println(messageDetail)
-
-			order, err := orderService.HandleOrderProcessingNotificationSentEvent(ctx, messageDetail.Detail.ID)
-			if err != nil {
-				fmt.Printf("Error updating order: %v\n", err)
-			} else {
-				fmt.Printf("Order updated successfully: %+v\n", order)
-			}
-		}
-	default:
-		log.Printf("Unhandled event type: %s", event.DetailType)
-	}
-	return nil
+type SQSConsumer struct {
+	client       *sqs.Client
+	eventHandler eventhandler.EventHandler
+	queueURL     string
+	maxConsumers int
 }
 
-func StartSQSConsumer(queueURL string, orderService *services.OrderService) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func NewSQSConsumer(ctx context.Context, eventHandler eventhandler.EventHandler, queueURL string, maxConsumers int) *SQSConsumer {
+	consumer := &SQSConsumer{
+		client:       client,
+		eventHandler: eventHandler,
+		queueURL:     queueURL,
+		maxConsumers: maxConsumers,
+	}
+	go consumer.start(ctx)
+	return consumer
+}
 
-	// Graceful shutdown support
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+func (c *SQSConsumer) start(ctx context.Context) {
 
 	jobs := make(chan types.Message, 50)
 	var wg sync.WaitGroup
 
-	msgValidator := validator.New()
-	log.Println("Now accepting messages")
-
-	for i := 0; i < MAX_CONSUMER; i++ {
+	for i := 0; i < c.maxConsumers; i++ {
 		wg.Add(1)
-		go func(workerID int) {
-			defer wg.Done()
-			for msg := range jobs {
-				processMessage(&msg, msgValidator, queueURL, orderService)
-			}
-		}(i)
+		go c.worker(ctx, jobs, &wg)
 	}
 
 	log.Println("SQS Consumer running...")
 
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				log.Println("Stopping message fetcher...")
-				return
-			default:
-				output := receiveMessages(ctx, queueURL)
-				for _, msg := range output.Messages {
-					select {
-					case jobs <- msg: // enqueue message
-					case <-ctx.Done():
-						return
-					}
-				}
-			}
-		}
-	}()
+	go c.fetchMessages(ctx, jobs)
 
-	<-sigs
+	<-ctx.Done()
 	log.Println("Shutdown signal received. Cleaning up...")
-
-	cancel()
 
 	close(jobs)
 	wg.Wait()
-
 	log.Println("All workers exited. Shutdown complete.")
 }
 
-func receiveMessages(ctx context.Context, queueURL string) *sqs.ReceiveMessageOutput {
-	output, err := client.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
-		QueueUrl:            aws.String(queueURL),
+func (c *SQSConsumer) worker(ctx context.Context, jobs <-chan types.Message, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for msg := range jobs {
+		ctx, cancel := context.WithTimeout(ctx, TIMEOUT)
+		var event models.Event
+		if err := json.Unmarshal([]byte(*msg.Body), &event); err != nil {
+			log.Printf("Failed to unmarshal event body: %v", err)
+			//c.deleteMessage(*msg.ReceiptHandle)
+			cancel()
+			continue
+		}
+
+		if err := c.eventHandler.HandleMessage(ctx, &event); err != nil {
+			c.deleteMessage(*msg.ReceiptHandle)
+		}
+	}
+}
+
+func (c *SQSConsumer) fetchMessages(ctx context.Context, jobs chan<- types.Message) {
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Stopping message fetcher...")
+			return
+		default:
+			output := c.receiveMessages(ctx)
+			for _, msg := range output.Messages {
+				select {
+				case jobs <- msg:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}
+}
+
+func (c *SQSConsumer) receiveMessages(ctx context.Context) *sqs.ReceiveMessageOutput {
+	output, err := c.client.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
+		QueueUrl:            aws.String(c.queueURL),
 		MaxNumberOfMessages: MAX_NUMBER_OF_MESSAGE,
 		WaitTimeSeconds:     WAIT_TIME_SECONDS,
 	})
@@ -186,16 +143,9 @@ func receiveMessages(ctx context.Context, queueURL string) *sqs.ReceiveMessageOu
 	return output
 }
 
-func processMessage(msg *types.Message, msgValidator *validator.Validator, queueURL string, orderService *services.OrderService) {
-	err := handleMessage(msg, msgValidator, orderService)
-	if err != nil {
-		deleteMessage(queueURL, *msg.ReceiptHandle)
-	}
-}
-
-func deleteMessage(queueURL string, receiptHandle string) {
-	_, err := client.DeleteMessage(context.TODO(), &sqs.DeleteMessageInput{
-		QueueUrl:      aws.String(queueURL),
+func (c *SQSConsumer) deleteMessage(receiptHandle string) {
+	_, err := c.client.DeleteMessage(context.Background(), &sqs.DeleteMessageInput{
+		QueueUrl:      aws.String(c.queueURL),
 		ReceiptHandle: aws.String(receiptHandle),
 	})
 	if err != nil {

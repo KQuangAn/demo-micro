@@ -7,31 +7,29 @@ package graph
 import (
 	"context"
 	"orderservice/graph/model"
+	"time"
+
+	"github.com/google/uuid"
 )
 
-// CreateOrder is the resolver for the createOrder field.
-func (r *mutationResolver) CreateOrder(ctx context.Context, userID string, productID string, quantity int32) (*model.Order, error) {
-	return r.OrderService.CreateOrder(ctx, userID, productID, quantity)
-}
-
-// UpdateOrder is the resolver for the updateOrder field.
-func (r *mutationResolver) UpdateOrder(ctx context.Context, id string, productID string, quantity int32, status model.OrderStatus) (*model.Order, error) {
-	return r.OrderService.UpdateOrder(ctx, id, productID, quantity, status)
+// UpdateOrderDetail is the resolver for the updateOrderDetail field.
+func (r *mutationResolver) UpdateOrderDetail(ctx context.Context, orderDetailID uuid.UUID, quantity *int32, status *model.OrderDetailStatus) (*model.OrderDetail, error) {
+	return r.OrderService.UpdateOrderDetail(ctx, orderDetailID, quantity, status)
 }
 
 // CancelOrder is the resolver for the cancelOrder field.
-func (r *mutationResolver) CancelOrder(ctx context.Context, id string) (*model.Order, error) {
+func (r *mutationResolver) CancelOrder(ctx context.Context, id uuid.UUID) (*model.Order, error) {
 	return r.OrderService.CancelOrder(ctx, id)
 }
 
-// Orders is the resolver for the orders field.
-func (r *queryResolver) Orders(ctx context.Context) ([]*model.Order, error) {
-	return r.OrderService.GetAllOrders(ctx)
+// GetOrdersByUserID is the resolver for the getOrdersByUserId field.
+func (r *queryResolver) GetOrdersByUserID(ctx context.Context, userID uuid.UUID, first *int32, after *time.Time) (*model.OrderConnection, error) {
+	return r.OrderService.GetOrdersByUserId(ctx, userID, first, after)
 }
 
-// Order is the resolver for the order field.
-func (r *queryResolver) Order(ctx context.Context, id string) (*model.Order, error) {
-	return r.OrderService.GetOrderByID(ctx, id)
+// GetOrderDetailsByOrderID is the resolver for the getOrderDetailsByOrderId field.
+func (r *queryResolver) GetOrderDetailsByOrderID(ctx context.Context, orderID uuid.UUID, first *int32, after *time.Time) (*model.OrderDetailConnection, error) {
+	return r.OrderService.GetOrdersDetailByOrderId(ctx, orderID, first, after)
 }
 
 // Mutation returns MutationResolver implementation.

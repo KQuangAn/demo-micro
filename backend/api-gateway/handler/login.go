@@ -35,7 +35,7 @@ func respondWithError(w http.ResponseWriter, code int, message string, err error
 	http.Error(w, message, code)
 }
 
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+func respondWithJSON(w http.ResponseWriter, code int, payload any) {
 	response, err := json.Marshal(payload)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Failed to encode response", err)
@@ -55,6 +55,17 @@ func GenerateToken(username string) (string, error) {
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(mySigningKey)
+}
+
+type LoginResponse struct {
+	Message string       `json:"message"`
+	Data    UserResponse `json:"data"`
+}
+
+type UserResponse struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+	Token    string `json:"token"`
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -95,8 +106,22 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Logged in successfully",
-		"token": token})
+
+	userId, err := client.HGet(ctx, creds.Username, "user_id").Result()
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "User id not found", err)
+		return
+	}
+	response := LoginResponse{
+		Message: "Logged in successfully",
+		Data: UserResponse{
+			ID:       userId,
+			Username: creds.Username,
+			Token:    token,
+		},
+	}
+
+	json.NewEncoder(w).Encode(response)
 }
 
 func TokenValid(next http.Handler) http.Handler {
@@ -108,7 +133,7 @@ func TokenValid(next http.Handler) http.Handler {
 		}
 
 		claims := &models.Claims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
 			return mySigningKey, nil
 		})
 

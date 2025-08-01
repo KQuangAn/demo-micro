@@ -14,18 +14,28 @@ import (
 	"github.com/gobwas/ws"
 	log "github.com/jensneuse/abstractlogger"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	gatewayHttp "github.com/wundergraph/graphql-go-tools/examples/federation/gateway/http"
 	"github.com/wundergraph/graphql-go-tools/execution/engine"
 	"github.com/wundergraph/graphql-go-tools/execution/graphql"
 	"github.com/wundergraph/graphql-go-tools/v2/pkg/playground"
+
+	muxHandler "github.com/gorilla/handlers"
 )
 
 func logger() log.Logger {
-	logger, err := zap.NewDevelopmentConfig().Build()
+	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		panic(err)
 	}
+	defer file.Close()
+
+	// Create a zap logger that writes to the file
+	writer := zapcore.AddSync(file)
+	core := zapcore.NewCore(zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()), writer, zap.DebugLevel)
+
+	logger := zap.New(core)
 
 	return log.NewZapLogger(logger, log.DebugLevel)
 }
@@ -103,6 +113,11 @@ func startServer() {
 		panic("Failed to connect to Redis: " + err.Error())
 	}
 
+	// CORS configuration
+	corsOptions := muxHandler.AllowedOrigins([]string{"http://localhost:3000"}) // Update with your frontend URL
+	corsOptions = muxHandler.AllowedMethods([]string{"GET", "POST", "OPTIONS"})
+	corsOptions = muxHandler.AllowedHeaders([]string{"Content-Type", "Authorization"})
+
 	mux.HandleFunc("/login", appHandler.LoginHandler)
 	mux.HandleFunc("/register", appHandler.RegisterHandler)
 
@@ -113,7 +128,7 @@ func startServer() {
 		log.String("add", addr),
 	)
 	fmt.Printf("Access Playground on: http://%s%s%s\n", prettyAddr(addr), playgroundURLPrefix, playgroundURL)
-	err = http.ListenAndServe(addr, mux)
+	err = http.ListenAndServe(addr, muxHandler.CORS(corsOptions)(mux))
 	if err != nil {
 		logger.Fatal("failed listening", log.Error(err))
 	}

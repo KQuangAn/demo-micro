@@ -1,30 +1,13 @@
 'use server';
 
-import {
-  GET_ALL_INVENTORY,
-  GET_INVENTORY_ITEMS_PRICE_AND_QUANTITY_BY_ID,
-  client,
-  
-}from '@repo/apollo-client';
-import prisma from '../lib/prisma';
+import { getAuth } from '@repo/auth';
+import { revalidatePath } from 'next/cache';
 
-export const createOrder = () => {
-  try {
-    const res = prisma.$transaction(async (transaction) => {
-      const inventoryInfo = await client.query({
-        query: GET_INVENTORY_ITEMS_PRICE_AND_QUANTITY_BY_ID,
-      });
+export async function getCurrentUser() {
+  const session = await getAuth();
+  return session;
+}
 
-      if (!inventoryInfo.data?.getInventory) {
-        throw Error();
-      }
-      const inventoryPrice = inventoryInfo.data?.getInventory.price;
-      const inventoryQuantity = inventoryInfo.data?.getInventory.price;
-
-      
-
-
-      return await Promise.all(createProductPromises);
-    });
-  } catch {}
-};
+export async function invalidatePath(path: string, type?: 'layout' | 'page') {
+  return revalidatePath(path, type);
+}

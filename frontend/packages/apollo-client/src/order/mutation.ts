@@ -1,10 +1,10 @@
 import { gql } from '@apollo/client';
 
 export const CREATE_ORDER = gql`
-  mutation createOrder($userID: ID!, $productId: ID!, $quantity: Int!) {
-    createOrder(userID: $userID, productId: $productId, quantity: $quantity) {
+  mutation createOrder($userId: UUID!, $productId: UUID!, $quantity: Int!) {
+    createOrder(userId: $userId, productId: $productId, quantity: $quantity) {
       id
-      userID
+      userId
       productId
       quantity
       status
@@ -14,29 +14,30 @@ export const CREATE_ORDER = gql`
   }
 `;
 
+// Example variables for creating an order
 // {
-//   "userID": "e7cf02af-515d-42b2-bb6a-283bd3bf92d2",
-//   "productId":"e7cf02af-515d-42b2-bb6a-283bd3bf92d2",
+//   "userId": "e7cf02af-515d-42b2-bb6a-283bd3bf92d2",
+//   "productId": "e7cf02af-515d-42b2-bb6a-283bd3bf92d2",
 //   "quantity": 3
 // }
 
 export const UPDATE_ORDER = gql`
-  mutation updateOrder(
-    $id: ID!
-    $productId: ID!
-    $quantity: Int!
-    $status: OrderStatus!
+  mutation UpdateOrderDetail(
+    $orderDetailId: UUID!
+    $quantity: Int
+    $status: OrderDetailStatus
   ) {
-    updateOrder(
-      id: $id
-      productId: $productId
+    updateOrderDetail(
+      orderDetailId: $orderDetailId
       quantity: $quantity
       status: $status
     ) {
       id
-      userID
+      orderId
       productId
       quantity
+      price
+      currency
       status
       createdAt
       updatedAt
@@ -45,13 +46,10 @@ export const UPDATE_ORDER = gql`
 `;
 
 export const CANCEL_ORDER = gql`
-  mutation cancelOrder($id: ID!) {
+  mutation CancelOrder($id: UUID!) {
     cancelOrder(id: $id) {
       id
-      userID
-      productId
-      quantity
-      status
+      userId
       createdAt
       updatedAt
     }

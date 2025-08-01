@@ -1,4 +1,4 @@
-package eventbridge
+package eventemitter
 
 import (
 	"context"

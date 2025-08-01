@@ -7,44 +7,66 @@ import {
   CardContent,
   CardFooter,
 } from '../../components/ui/card';
-import { isVariableValid } from '../../lib/utils';
+import { cn, isVariableValid } from '../../lib/utils';
 import { useCartContext } from '../../providers/cart-provider';
 import { Separator } from '../../components/ui/separator';
-import { client, CREATE_ORDER } from '@repo/apollo-client';
-import { useMutation } from '@apollo/client';
-
-const tempUserid = '550e8400-e29b-41d4-a716-446655440004';
+import {
+  client,
+  RESERVE_INVENTORY,
+  ReserveInventoryInputSchema,
+  TReserveInventoryInput,
+} from '@repo/apollo-client';
+import { useState } from 'react';
+import { useSession } from '@repo/auth';
+import { invalidatePath } from '../../server';
 
 export function Receipt() {
-  //const { authenticated } = useAuthenticated();
+  const session = useSession();
+
+  const [isLoading, setIsLoading] = useState(false);
   const { loading, cart, refreshCart, dispatchCart } = useCartContext();
-  // const [createOrder, { data, loading: loadingMutation, error }] =
-  //   useMutation(CREATE_ORDER);
 
   const handleCheckout = async () => {
-    const ordersToCreate = cart.items.map((item) => ({
-      userId: tempUserid,
-      productId: item?.productId,
-      quantity: item?.count,
-    }));
-    console.log(ordersToCreate);
     try {
+      setIsLoading(true);
+      console.log(session.data);
+
+      const reserveInput: TReserveInventoryInput = {
+        userId: session.data?.user?.id,
+        products: cart.items.map((item) => ({
+          productId: item.productId,
+          quantity: item.count,
+          currency: 'USD',
+        })),
+      };
+
+      const parsed = ReserveInventoryInputSchema.safeParse(reserveInput);
+
+      if (!parsed.success) {
+        console.error('Validation failed', parsed.error);
+        return;
+      }
       // const createOrderPromises = ordersToCreate.map((order) =>
       //   createOrder({ variables: order })
       // );
       const result = await client.mutate({
-        mutation: CREATE_ORDER,
+        mutation: RESERVE_INVENTORY,
         variables: {
-          userID: tempUserid,
-          productId: ordersToCreate[0]?.productId,
-          quantity: ordersToCreate[0]?.quantity,
+          reserveInventoryInput: parsed.data,
         },
       });
 
       //const result = await Promise.all(createOrderPromises);
       console.log('Batch order creation results:', result);
+      //clear cart
+      dispatchCart({
+        items: [],
+      });
+      await invalidatePath('/');
     } catch (error) {
       console.error('Error creating orders in batch:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
   //console.log(data, loadingMutation, error);
@@ -103,9 +125,9 @@ export function Receipt() {
         <Button
           onClick={handleCheckout}
           disabled={!isVariableValid(cart?.items) || cart['items'].length === 0}
-          className="w-full"
+          className={cn('w-full', isLoading && 'bg-gray-300')}
         >
-          Checkout
+          {isLoading ? 'Loading' : 'Checkout'}
         </Button>
       </CardFooter>
     </Card>

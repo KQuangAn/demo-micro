@@ -50,7 +50,6 @@ describe('InventoryService', () => {
         description: 'desc',
         images: [''],
         categories: ['stuff'],
-        discount: 0,
         quantity: 10,
         price: 5,
       };

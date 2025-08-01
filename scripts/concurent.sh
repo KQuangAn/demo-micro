@@ -1,280 +1,145 @@
 #!/bin/bash
-set +e #ignore err 
+set -euo pipefail
 
 export AWS_REGION="ap-southeast-1"
 export AWS_DEFAULT_REGION="ap-southeast-1"
 export AWS_ACCESS_KEY_ID="test"
 export AWS_SECRET_ACCESS_KEY="test"
 export AWS_ENDPOINT_URL="http://localhost:4566"
-# Wait for LocalStack to be ready
-until $(curl --output /dev/null --silent --head --fail http://localhost:4566/_localstack/health); do
-    printf '.'
-    sleep 5
-done
 
 EVENT_BUS_NAME="evbus"
-REGION="ap-southeast-1"
+REGION="$AWS_REGION"
 
+# Wait for LocalStack to be ready
+until curl --silent --head --fail "$AWS_ENDPOINT_URL/_localstack/health" >/dev/null; do
+  printf '.'
+  sleep 5
+done
+echo "LocalStack is ready."
 
 # Create EventBridge Event Bus if it doesn't exist
-if ! aws --endpoint-url=http://localhost:4566 events list-event-buses | grep -q "$EVENT_BUS_NAME"; then
-    echo "Creating event bus $EVENT_BUS_NAME..."
-    aws --endpoint-url=http://localhost:4566 events create-event-bus --name "$EVENT_BUS_NAME" &
+if ! aws --endpoint-url="$AWS_ENDPOINT_URL" events list-event-buses | grep -q "$EVENT_BUS_NAME"; then
+  echo "Creating event bus $EVENT_BUS_NAME..."
+  aws --endpoint-url="$AWS_ENDPOINT_URL" events create-event-bus --name "$EVENT_BUS_NAME" &
 else
-    echo "Event bus $EVENT_BUS_NAME already exists."
+  echo "Event bus $EVENT_BUS_NAME already exists."
 fi
 
-
 # Create SQS Queues
-aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name orders-queue &
-aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name orders-dead-letter-queue &
-aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name notification-queue &
-aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name notification-dead-letter-queue &
-aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name inventory-queue &
-aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name inventory-dead-letter-queue &
-
-
-#config main queue
-ORDERS_DLQ_URL=$(aws --endpoint-url=http://localhost:4566 sqs get-queue-url --queue-name orders-dead-letter-queue --output text --query QueueUrl)
-INVENTORY_DLQ_URL=$(aws --endpoint-url=http://localhost:4566 sqs get-queue-url --queue-name inventory-dead-letter-queue --output text --query QueueUrl)
-NOTIFICATION_DLQ_URL=$(aws --endpoint-url=http://localhost:4566 sqs get-queue-url --queue-name notification-dead-letter-queue --output text --query QueueUrl)
-
-echo "Orders DLQ URL: $ORDERS_DLQ_URL"
-echo "Inventory DLQ URL: $INVENTORY_DLQ_URL"
-echo "Notification DLQ URL: $NOTIFICATION_DLQ_URL"
-
-
-MAX_RECEIVE_COUNT="5"
-REDRIVE_POLICY_TEMPLATE="{\"maxReceiveCount\":\"$MAX_RECEIVE_COUNT\", \"deadLetterTargetArn\":\"%s\"}"
-
-# Set attributes for the main queues with the redrive policy
-aws --endpoint-url=http://localhost:4566 sqs set-queue-attributes --queue-url "$ORDERS_DLQ_URL" --attributes "{\"RedrivePolicy\":\"$(printf "$REDRIVE_POLICY_TEMPLATE" "$ORDERS_DLQ_URL")\"}"
-aws --endpoint-url=http://localhost:4566 sqs set-queue-attributes --queue-url "$INVENTORY_DLQ_URL" --attributes "{\"RedrivePolicy\":\"$(printf "$REDRIVE_POLICY_TEMPLATE" "$INVENTORY_DLQ_URL")\"}"
-aws --endpoint-url=http://localhost:4566 sqs set-queue-attributes --queue-url "$NOTIFICATION_DLQ_URL" --attributes "{\"RedrivePolicy\":\"$(printf "$REDRIVE_POLICY_TEMPLATE" "$NOTIFICATION_DLQ_URL")\"}"
-# Wait for all SQS queue creation to finish
+for queue in orders notification inventory; do
+  aws --endpoint-url="$AWS_ENDPOINT_URL" sqs create-queue --queue-name "${queue}-queue" &
+  aws --endpoint-url="$AWS_ENDPOINT_URL" sqs create-queue --queue-name "${queue}-dead-letter-queue" &
+done
 wait
 
+# Get main and DLQ URLs
+ORDERS_QUEUE_URL=$(aws --endpoint-url="$AWS_ENDPOINT_URL" sqs get-queue-url --queue-name orders-queue --query QueueUrl --output text)
+INVENTORY_QUEUE_URL=$(aws --endpoint-url="$AWS_ENDPOINT_URL" sqs get-queue-url --queue-name inventory-queue --query QueueUrl --output text)
+NOTIFICATION_QUEUE_URL=$(aws --endpoint-url="$AWS_ENDPOINT_URL" sqs get-queue-url --queue-name notification-queue --query QueueUrl --output text)
 
-ORDER_SOURCE="com.order.service"
-INVENTORY_SOURCE="com.inventory.service"
-NOTIFICATION_SOURCE="com.notification.service"
+ORDERS_DLQ_URL=$(aws --endpoint-url="$AWS_ENDPOINT_URL" sqs get-queue-url --queue-name orders-dead-letter-queue --query QueueUrl --output text)
+INVENTORY_DLQ_URL=$(aws --endpoint-url="$AWS_ENDPOINT_URL" sqs get-queue-url --queue-name inventory-dead-letter-queue --query QueueUrl --output text)
+NOTIFICATION_DLQ_URL=$(aws --endpoint-url="$AWS_ENDPOINT_URL" sqs get-queue-url --queue-name notification-dead-letter-queue --query QueueUrl --output text)
 
-# Create the EventBridge rules concurrently
-aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "order_placed" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --event-pattern "{
-      \"source\": [\"${ORDER_SOURCE}\"],
-      \"detail-type\": [\"order_placed\"]
-    }" \
-    --description "Capture OrderPlaced events" --region "${REGION}" &
+# Get DLQ ARNs
+ORDERS_DLQ_ARN=$(aws --endpoint-url="$AWS_ENDPOINT_URL" sqs get-queue-attributes --queue-url "$ORDERS_DLQ_URL" --attribute-names QueueArn --query Attributes.QueueArn --output text)
+INVENTORY_DLQ_ARN=$(aws --endpoint-url="$AWS_ENDPOINT_URL" sqs get-queue-attributes --queue-url "$INVENTORY_DLQ_URL" --attribute-names QueueArn --query Attributes.QueueArn --output text)
+NOTIFICATION_DLQ_ARN=$(aws --endpoint-url="$AWS_ENDPOINT_URL" sqs get-queue-attributes --queue-url "$NOTIFICATION_DLQ_URL" --attribute-names QueueArn --query Attributes.QueueArn --output text)
 
+# Set Redrive Policies
+for queue_url in "$ORDERS_QUEUE_URL" "$INVENTORY_QUEUE_URL" "$NOTIFICATION_QUEUE_URL"; do
+  case $queue_url in
+    *orders*) DLQ_ARN=$ORDERS_DLQ_ARN ;;
+    *inventory*) DLQ_ARN=$INVENTORY_DLQ_ARN ;;
+    *notification*) DLQ_ARN=$NOTIFICATION_DLQ_ARN ;;
+  esac
 
-aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "order_updated" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --event-pattern "{
-      \"source\": [\"${ORDER_SOURCE}\"],
-      \"detail-type\": [\"order_updated\"]
-    }" \
-    --description "Capture OrderUpdated events" --region "${REGION}" &
-
-
-aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "order_processing" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --event-pattern "{
-      \"source\": [\"${ORDER_SOURCE}\"],
-      \"detail-type\": [\"order_processing\"]
-    }" \
-    --description "Capture order_processing events" --region "${REGION}" &
-
-
-aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "order_cancelled_by_user" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --event-pattern "{
-      \"source\": [\"${ORDER_SOURCE}\"],
-      \"detail-type\": [\"order_cancelled_by_user\"]
-    }" \
-    --description "Capture OrderCancelledByUser events" --region "${REGION}" &
-
-aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "order_cancelled_insufficient_inventory" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --event-pattern "{
-      \"source\": [\"${ORDER_SOURCE}\"],
-      \"detail-type\": [\"order_cancelled_insufficient_inventory\"]
-    }" \
-    --description "Capture OrderCancelledInsufficientInventory events" --region "${REGION}" &
-
-aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "order_cancelled_insufficient_funds" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --event-pattern "{
-      \"source\": [\"${ORDER_SOURCE}\"],
-      \"detail-type\": [\"order_cancelled_insufficient_funds\"]
-    }" \
-    --description "Capture OrderCancelledInsufficientFunds events" --region "${REGION}" &
-
-aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "order_processed" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --event-pattern "{
-      \"source\": [\"${ORDER_SOURCE}\"],
-      \"detail-type\": [\"order_processed\"]
-    }" \
-    --description "Capture OrderProcessed events" --region "${REGION}" &
-
-aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "order_completed" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --event-pattern "{
-      \"source\": [\"${ORDER_SOURCE}\"],
-      \"detail-type\": [\"order_completed\"]
-    }" \
-    --description "Capture OrderCompleted events" --region "${REGION}" &
-
-aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "inventory_created" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --event-pattern "{
-      \"source\": [\"${INVENTORY_SOURCE}\"],
-      \"detail-type\": [\"inventory_created\"]
-    }" \
-    --description "Capture InventoryCreated events" --region "${REGION}" &
-
-aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "inventory_updated" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --event-pattern "{
-      \"source\": [\"${INVENTORY_SOURCE}\"],
-      \"detail-type\": [\"inventory_updated\"]
-    }" \
-    --description "Capture InventoryUpdated events" --region "${REGION}" &
-
-aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "inventory_deleted" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --event-pattern "{
-      \"source\": [\"${INVENTORY_SOURCE}\"],
-      \"detail-type\": [\"inventory_deleted\"]
-    }" \
-    --description "Capture InventoryDeleted events" --region "${REGION}" &
-
-aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "inventory_reserved" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --event-pattern "{
-      \"source\": [\"${INVENTORY_SOURCE}\"],
-      \"detail-type\": [\"inventory_reserved\"]
-    }" \
-    --description "Capture InventoryReserved events" --region "${REGION}" &
-
-aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "inventory_reservation_failed" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --event-pattern "{
-      \"source\": [\"${INVENTORY_SOURCE}\"],
-      \"detail-type\": [\"inventory_reservation_failed\"]
-    }" \
-    --description "Capture InventoryReservationFailed events" --region "${REGION}" &
-
-aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "notification_sent_success" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --event-pattern "{
-      \"source\": [\"${NOTIFICATION_SOURCE}\"],
-      \"detail-type\": [\"notification_sent_success\"]
-    }" \
-    --description "Capture notification_sent_success events" --region "${REGION}" &
-
-aws --endpoint-url=http://localhost:4566 events put-rule \
-    --name "notification_sent_failed" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --event-pattern "{
-      \"source\": [\"${NOTIFICATION_SOURCE}\"],
-      \"detail-type\": [\"notification_sent_failed\"]
-    }" \
-    --description "Capture notification_sent_failed events" --region "${REGION}" &
-
-# Wait for all rule creation to finish
+  aws --endpoint-url="$AWS_ENDPOINT_URL" sqs set-queue-attributes \
+    --queue-url "$queue_url" \
+    --attributes "{\"RedrivePolicy\":\"{\\\"maxReceiveCount\\\":\\\"5\\\",\\\"deadLetterTargetArn\\\":\\\"$DLQ_ARN\\\"}\"}" &
+done
 wait
 
-# Add targets to the rules concurrently
-TARGET_NOTIFICATION_ARN="arn:aws:sqs:${REGION}:000000000000:notification-queue"
+# EventBridge rule definitions
+declare -A RULES=(
+  ["order_placed"]="com.order.service:order_placed"
+  ["order_updated"]="com.order.service:order_updated"
+  ["order_processing"]="com.order.service:order_processing"
+  ["order_cancelled_by_user"]="com.order.service:order_cancelled_by_user"
+  ["order_cancelled_insufficient_inventory"]="com.order.service:order_cancelled_insufficient_inventory"
+  ["order_cancelled_insufficient_funds"]="com.order.service:order_cancelled_insufficient_funds"
+  ["order_processed"]="com.order.service:order_processed"
+  ["order_completed"]="com.order.service:order_completed"
+  ["inventory_created"]="com.inventory.service:inventory_created"
+  ["inventory_updated"]="com.inventory.service:inventory_updated"
+  ["inventory_deleted"]="com.inventory.service:inventory_deleted"
+  ["inventory_reserved"]="com.inventory.service:inventory_reserved"
+  ["inventory_reservation_failed"]="com.inventory.service:inventory_reservation_failed"
+  ["notification_sent_success"]="com.notification.service:notification_sent_success"
+  ["notification_sent_failed"]="com.notification.service:notification_sent_failed"
+)
+
+for rule in "${!RULES[@]}"; do
+  IFS=":" read -r SOURCE TYPE <<<"${RULES[$rule]}"
+  aws --endpoint-url="$AWS_ENDPOINT_URL" events put-rule \
+    --name "$rule" \
+    --event-bus-name "$EVENT_BUS_NAME" \
+    --event-pattern "{\"source\": [\"$SOURCE\"], \"detail-type\": [\"$TYPE\"]}" \
+    --description "Capture ${TYPE//_/ } events" \
+    --region "$REGION" &
+done
+wait
+
+# Define targets
 TARGET_ORDERS_ARN="arn:aws:sqs:${REGION}:000000000000:orders-queue"
+TARGET_NOTIFICATION_ARN="arn:aws:sqs:${REGION}:000000000000:notification-queue"
 TARGET_INVENTORY_ARN="arn:aws:sqs:${REGION}:000000000000:inventory-queue"
+# Helper to add multiple targets
+put_targets() {
+  local rule=$1
+  shift
+  local targets=()
+  local i=1
+  
+  for arn in "$@"; do
+    targets+=("{\"Id\":\"$i\",\"Arn\":\"$arn\"}")
+    ((i++))
+  done
 
-aws --endpoint-url=http://localhost:4566 events put-targets \
-    --rule "order_placed" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_NOTIFICATION_ARN}" "Id"="2","Arn"="${TARGET_INVENTORY_ARN}" &
+  # Create a valid JSON array with commas
+  local targets_string=$(printf ",%s" "${targets[@]}") # Join with commas
+  targets_string="[${targets_string:1}]" # Remove the leading comma
 
-aws --endpoint-url=http://localhost:4566 events put-targets \
-    --rule "order_processing" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" "Id"="2","Arn"="${TARGET_NOTIFICATION_ARN}" &
+  # Log the targets string for debugging
+  echo "Targets JSON: $targets_string"
 
-aws --endpoint-url=http://localhost:4566 events put-targets \
-    --rule "order_cancelled_by_user" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" "Id"="2","Arn"="${TARGET_NOTIFICATION_ARN}" &
+  local output
+  output=$(aws --endpoint-url="$AWS_ENDPOINT_URL" events put-targets \
+    --rule "$rule" \
+    --event-bus-name "$EVENT_BUS_NAME" \
+    --targets "$targets_string" 2>&1) 
+  
+  if [[ $? -ne 0 ]]; then
+    echo "Error putting targets for rule $rule: $output"
+  else
+    echo "Successfully added targets for rule $rule."
+  fi
+}
+# Map rules to targets
+put_targets "order_placed" "$TARGET_NOTIFICATION_ARN" "$TARGET_INVENTORY_ARN"
+put_targets "order_processing" "$TARGET_INVENTORY_ARN" "$TARGET_NOTIFICATION_ARN"
+put_targets "order_cancelled_by_user" "$TARGET_INVENTORY_ARN" "$TARGET_NOTIFICATION_ARN"
+put_targets "order_cancelled_insufficient_inventory" "$TARGET_INVENTORY_ARN" "$TARGET_NOTIFICATION_ARN"
+put_targets "order_cancelled_insufficient_funds" "$TARGET_INVENTORY_ARN" "$TARGET_NOTIFICATION_ARN"
+put_targets "order_processed" "$TARGET_NOTIFICATION_ARN"
+put_targets "order_completed" "$TARGET_NOTIFICATION_ARN"
+put_targets "inventory_created" "$TARGET_INVENTORY_ARN"
+put_targets "inventory_updated" "$TARGET_INVENTORY_ARN"
+put_targets "inventory_deleted" "$TARGET_INVENTORY_ARN"
+put_targets "inventory_reserved" "$TARGET_ORDERS_ARN" "$TARGET_NOTIFICATION_ARN"
+put_targets "inventory_reservation_failed" "$TARGET_ORDERS_ARN"
+put_targets "notification_sent_success" "$TARGET_ORDERS_ARN"
+put_targets "notification_sent_failed" "$TARGET_ORDERS_ARN"
 
-aws --endpoint-url=http://localhost:4566 events put-targets \
-    --rule "order_cancelled_insufficient_inventory" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" "Id"="2","Arn"="${TARGET_NOTIFICATION_ARN}" &
-
-aws --endpoint-url=http://localhost:4566 events put-targets \
-    --rule "order_cancelled_insufficient_funds" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" "Id"="2","Arn"="${TARGET_NOTIFICATION_ARN}" &
-
-aws --endpoint-url=http://localhost:4566 events put-targets \
-    --rule "order_processed" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_NOTIFICATION_ARN}" &
-
-aws --endpoint-url=http://localhost:4566 events put-targets \
-    --rule "order_completed" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_NOTIFICATION_ARN}" &
-
-aws --endpoint-url=http://localhost:4566 events put-targets \
-    --rule "inventory_created" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" &
-
-aws --endpoint-url=http://localhost:4566 events put-targets \
-    --rule "inventory_updated" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" &
-
-aws --endpoint-url=http://localhost:4566 events put-targets \
-    --rule "inventory_deleted" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_INVENTORY_ARN}" &
-
-aws --endpoint-url=http://localhost:4566 events put-targets \
-    --rule "inventory_reserved" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_ORDERS_ARN}" "Id"="2","Arn"="${TARGET_NOTIFICATION_ARN}" &
-
-aws --endpoint-url=http://localhost:4566 events put-targets \
-    --rule "inventory_reservation_failed" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_ORDERS_ARN}" &
-
-aws --endpoint-url=http://localhost:4566 events put-targets \
-    --rule "notification_sent_success" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_ORDERS_ARN}" &
-
-aws --endpoint-url=http://localhost:4566 events put-targets \
-    --rule "notification_sent_failed" \
-    --event-bus-name "${EVENT_BUS_NAME}" \
-    --targets "Id"="1","Arn"="${TARGET_ORDERS_ARN}" &
-
-# Wait for all target additions to finish
 wait
+echo "✅ LocalStack EventBridge and SQS setup completed."

@@ -7,13 +7,13 @@ export class Inventory {
   @Field(() => ID)
   id: string;
 
-  @Field()
+  @Field(() => String)
   title: string;
 
-  @Field()
+  @Field(() => String)
   brand: string;
 
-  @Field()
+  @Field(() => String)
   description: string;
 
   @Field(() => [String])
@@ -28,8 +28,8 @@ export class Inventory {
   @Field(() => Float)
   price: number;
 
-  @Field(() => Float, { nullable: true })
-  discount?: number;
+  @Field(() => String)
+  currencyName: string;
 
   @Field(() => DateScalar)
   createdAt: Date;

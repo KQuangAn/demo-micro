@@ -8,11 +8,18 @@ import (
 	"context"
 	"fmt"
 	"orderservice/graph/model"
+
+	"github.com/google/uuid"
 )
 
 // FindOrderByID is the resolver for the findOrderByID field.
-func (r *entityResolver) FindOrderByID(ctx context.Context, id string) (*model.Order, error) {
+func (r *entityResolver) FindOrderByID(ctx context.Context, id uuid.UUID) (*model.Order, error) {
 	panic(fmt.Errorf("not implemented: FindOrderByID - findOrderByID"))
+}
+
+// FindOrderDetailByID is the resolver for the findOrderDetailByID field.
+func (r *entityResolver) FindOrderDetailByID(ctx context.Context, id uuid.UUID) (*model.OrderDetail, error) {
+	panic(fmt.Errorf("not implemented: FindOrderDetailByID - findOrderDetailByID"))
 }
 
 // Entity returns EntityResolver implementation.

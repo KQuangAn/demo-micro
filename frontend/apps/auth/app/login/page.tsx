@@ -1,50 +1,50 @@
-'use client';
-import { signIn, useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
+"use client";
+import { signIn, useSession } from "@repo/auth";
+import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 const LoginPage = () => {
   const router = useRouter();
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   // const session = useSession();
   const { data: session, status: sessionStatus } = useSession();
 
   useEffect(() => {
     // if user has already logged in redirect to home page
-    if (sessionStatus === 'authenticated') {
-      router.replace('/');
+    if (sessionStatus === "authenticated") {
+      router.replace("/");
     }
   }, [sessionStatus, router]);
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    const email = e.target[0].value;
+    const username = e.target[0].value;
     const password = e.target[1].value;
 
-    if (!password || password.length < 8) {
-      setError('Password is invalid');
-      toast.error('Password is invalid');
+    if (!password || password.length < 1) {
+      setError("Password is invalid");
+      toast.error("Password is invalid");
       return;
     }
 
-    const res = await signIn('credentials', {
+    const res = await signIn("credentials", {
       redirect: false,
-      email,
+      username,
       password,
     });
 
     if (res?.error) {
-      setError('Invalid email or password');
-      toast.error('Invalid email or password');
-      if (res?.url) router.replace('/');
+      setError("Invalid username or password");
+      toast.error("Invalid username or password");
+      if (res?.url) router.replace("/");
     } else {
-      setError('');
-      toast.success('Successful login');
+      setError("");
+      toast.success("Successful login");
     }
   };
 
-  if (sessionStatus === 'loading') {
+  if (sessionStatus === "loading") {
     return <h1>Loading...</h1>;
   }
   return (
@@ -61,17 +61,16 @@ const LoginPage = () => {
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div>
                 <label
-                  htmlFor="email"
+                  htmlFor="username"
                   className="block text-sm font-medium leading-6 text-gray-900"
                 >
-                  Email address
+                  Username
                 </label>
                 <div className="mt-2">
                   <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
+                    id="username"
+                    name="username"
+                    autoComplete="username"
                     required
                     className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                   />
@@ -147,7 +146,7 @@ const LoginPage = () => {
                 <button
                   className="flex w-full items-center border border-gray-300 justify-center gap-3 rounded-md bg-white px-3 py-1.5 text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                   onClick={() => {
-                    signIn('google');
+                    signIn("google");
                   }}
                 >
                   <span className="text-sm font-semibold leading-6">
@@ -158,7 +157,7 @@ const LoginPage = () => {
                 <button
                   className="flex w-full items-center justify-center gap-3 rounded-md bg-[#24292F] px-3 py-1.5 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24292F]"
                   onClick={() => {
-                    signIn('github');
+                    signIn("github");
                   }}
                 >
                   <svg

@@ -1,0 +1,32 @@
+name: Detect Changes in Path
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        required: true
+        type: string
+    outputs:
+      changed:
+        description: "Whether files in the path changed"
+        value: ${{ jobs.check.outputs.changed }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2 # Fetch the last two commits to compare
+
+      - name: Check for changes in ${{ inputs.path }}
+        id: check
+        run: |
+          echo "Checking for changes in path: ${{ inputs.path }}"
+          git diff --name-only HEAD~1 HEAD
+          PATH_FILTER="${{ inputs.path }}"
+          CHANGED=$(git diff --name-only HEAD~1 HEAD | grep -E "^$PATH_FILTER/" || true)
+          echo "Changed files: $CHANGED"
+          echo "changed=${CHANGED:+true}" >> $GITHUB_OUTPUT

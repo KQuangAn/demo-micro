@@ -99,6 +99,7 @@ func setup(ctx context.Context) (services.OrderService, *validator.Validator, *e
 }
 
 func main() {
+
 	file, err := os.OpenFile("../../logs/order_service.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 
 	if err != nil {

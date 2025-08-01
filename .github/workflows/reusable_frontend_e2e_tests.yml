@@ -1,0 +1,80 @@
+on:
+  workflow_call:
+    inputs:
+      project_name:
+        required: true
+        type: string
+      pnpm_version:
+        required: false
+        type: string
+        default: 9.4.0
+      node_version:
+        required: false
+        type: string
+        default: 20.x
+    secrets:
+      sonar_token:
+        required: true
+      npm_token:
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+  issues: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  frontend_e2e_tests:
+    name: Frontend End-To-End Tests - ${{ inputs.project_name }}
+    runs-on: mobilerunner64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install pnpm ${{ inputs.pnpm_version }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.pnpm_version }}
+      - name: Use Node.js ${{ inputs.node_version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: pnpm
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        with:
+          key: pnpm-packages-${{ inputs.project_name }}${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-packages-${{ inputs.project_name }}-${{ hashFiles('pnpm-lock.yaml') }}
+            pnpm-packages-
+          path: |
+            ./.npm
+            ./node_modules
+      - name: Add NPM token
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.npm_token }}" >> ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.npm_token }}
+      - name: Install Dependencies
+        run: pnpm install --shamefully-hoist=true
+      - name: Run End To End Tests
+        run: ${GITHUB_WORKSPACE}/scripts/apps/e2e_test.sh
+        working-directory: apps/${{ inputs.project_name }}
+      # - name: Reporter of Test Results
+      #   uses: dorny/test-reporter@v1
+      #   if: success() || failure()
+      #   with:
+      #     name: Frontend E2E Tests Report
+      #     path: apps/${{ inputs.project_name }}/*.xml
+      #     reporter: jest-junit
+      - name: SonarQube Scan of E2E Tests
+        if: success() || failure()
+        continue-on-error: true
+        uses: sonarsource/sonarcloud-github-action@v2.3.0
+        with:
+          projectBaseDir: ./apps/${{ inputs.project_name }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io/
+          RUNNER_DEBUG: 1

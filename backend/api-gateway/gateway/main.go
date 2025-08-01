@@ -14,6 +14,7 @@ import (
 	"github.com/gobwas/ws"
 	log "github.com/jensneuse/abstractlogger"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	gatewayHttp "github.com/wundergraph/graphql-go-tools/examples/federation/gateway/http"
 	"github.com/wundergraph/graphql-go-tools/execution/engine"
@@ -24,10 +25,17 @@ import (
 )
 
 func logger() log.Logger {
-	logger, err := zap.NewDevelopmentConfig().Build()
+	file, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		panic(err)
 	}
+	defer file.Close()
+
+	// Create a zap logger that writes to the file
+	writer := zapcore.AddSync(file)
+	core := zapcore.NewCore(zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()), writer, zap.DebugLevel)
+
+	logger := zap.New(core)
 
 	return log.NewZapLogger(logger, log.DebugLevel)
 }

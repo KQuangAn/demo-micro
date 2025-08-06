@@ -26,6 +26,30 @@ env:
   AWS_OIDC_ROLE: github-oidc-deployer
 
 jobs:
+  lint-commit-msg:
+    runs-on: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install deps
+        run: npm install
+      - name: Lint commit message
+        run: npx commitlint --last --verbose
+  lint-code:
+    runs-on: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install deps
+        run: npm install
+      - name: Lint code
+        run: npm run lint
   changes:
     name: Detect Changed Paths
     runs-on: ubuntu-latest

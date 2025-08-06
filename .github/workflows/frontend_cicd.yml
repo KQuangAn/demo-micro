@@ -1,0 +1,140 @@
+on:
+  workflow_call:
+    inputs:
+      project_name:
+        required: true
+        type: string
+      pnpm_version:
+        required: false
+        type: string
+        default: 9.4.0
+      node_version:
+        required: false
+        type: string
+        default: 20.x
+    secrets:
+      sonar_token:
+        required: true
+      npm_token:
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+  issues: read
+  checks: write
+  pull-requests: write
+
+env:
+  SONAR_TOKEN: ${{ secrets.sonar_token }}
+  NPM_TOKEN: ${{ secrets.npm_token }}
+
+jobs:
+  unit_test:
+    name: Unit Tests - ${{ inputs.project_name }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install pnpm ${{ inputs.pnpm_version }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.pnpm_version }}
+      - name: Use Node.js ${{ inputs.node_version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+      - name: Add NPM token
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.npm_token }}" >> ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.npm_token }}
+      - name: Install Dependencies
+        run: pnpm install --shamefully-hoist=true
+      - name: Run Unit Tests
+        run: pnpm test:ci
+        working-directory: ./apps/${{ inputs.project_name }}
+      - name: SonarQube Scan Of Unit Test - ${{ inputs.project_name }}
+        if: success() || failure()
+        continue-on-error: true
+        uses: sonarsource/sonarcloud-github-action@v2.3.0
+        with:
+          projectBaseDir: ./apps/${{ inputs.project_name }}
+        env:
+          SONAR_TOKEN: ${{ secrets.sonar_token }}
+          SONAR_HOST_URL: https://sonarcloud.io/
+          RUNNER_DEBUG: 1
+  e2e_tests:
+    name: E2E Tests
+    uses: './.github/workflows/reusable_frontend_e2e_tests.yml'
+    with:
+      project_name: ${{ inputs.project_name }}
+    secrets:
+      sonar_token: ${{ secrets.SONAR_TOKEN }}
+      npm_token: ${{ secrets.NPM_TOKEN }}
+
+  staging_deploy:
+    name: Deployment - Staging
+    needs: ['unit_test', 'e2e_tests']
+    uses: './.github/workflows/reusable_frontend_deploy.yml'
+    with:
+      environment: staging
+      aws_account_id: 386594967457
+      project_name: ${{ inputs.project_name }}
+    secrets:
+      npm_token: ${{ secrets.npm_token }}
+      S3_BUCKET: ${{ secrets.STAGING_S3_BUCKET }}
+      AUTH_CLIENT_ID: ${{ secrets.STAGING_AUTH_CLIENT_ID }}
+      AUTH_DOMAIN: ${{ secrets.STAGING_AUTH_DOMAIN }}
+      LAUNCHDARKLY_CLIENT_ID: ${{ secrets.STAGING_LAUNCHDARKLY_CLIENT_ID }}
+      SEGMENT_WRITEKEY: ${{ secrets.STAGING_SEGMENT_WRITEKEY }}
+      DISTRIBUTION_ID: ${{ secrets.STAGING_DISTRIBUTION_ID }}
+      DATADOG_RUM_APPLICATION_ID: ${{ secrets.DATADOG_RUM_APPLICATION_ID }}
+      DATADOG_RUM_CLIENT_TOKEN: ${{ secrets.DATADOG_RUM_CLIENT_TOKEN }}
+      HYGRAPH_TOKEN: ${{ secrets.HYGRAPH_TOKEN }}
+      HYGRAPH_URL: ${{ secrets.HYGRAPH_URL }}
+
+  uat_deploy:
+    name: Deployment - UAT
+    needs: ['staging_deploy']
+    uses: './.github/workflows/reusable_frontend_deploy.yml'
+    with:
+      environment: uat
+      aws_account_id: 128555121632
+      project_name: ${{ inputs.project_name }}
+    secrets:
+      npm_token: ${{ secrets.npm_token }}
+      S3_BUCKET: ${{ secrets.UAT_S3_BUCKET }}
+      AUTH_CLIENT_ID: ${{ secrets.UAT_AUTH_CLIENT_ID }}
+      AUTH_DOMAIN: ${{ secrets.UAT_AUTH_DOMAIN }}
+      LAUNCHDARKLY_CLIENT_ID: ${{ secrets.UAT_LAUNCHDARKLY_CLIENT_ID }}
+      SEGMENT_WRITEKEY: ${{ secrets.UAT_SEGMENT_WRITEKEY }}
+      DISTRIBUTION_ID: ${{ secrets.UAT_DISTRIBUTION_ID }}
+      DATADOG_RUM_APPLICATION_ID: ${{ secrets.DATADOG_RUM_APPLICATION_ID }}
+      DATADOG_RUM_CLIENT_TOKEN: ${{ secrets.DATADOG_RUM_CLIENT_TOKEN }}
+      HYGRAPH_TOKEN: ${{ secrets.HYGRAPH_TOKEN }}
+      HYGRAPH_URL: ${{ secrets.HYGRAPH_URL }}
+
+  prod_deploy:
+    name: Deployment - Production
+    needs: ['uat_deploy']
+    uses: './.github/workflows/reusable_frontend_deploy.yml'
+    with:
+      environment: prod
+      aws_account_id: 590257951365
+      project_name: ${{ inputs.project_name }}
+
+    secrets:
+      npm_token: ${{ secrets.npm_token }}
+      S3_BUCKET: ${{ secrets.PROD_S3_BUCKET }}
+      AUTH_CLIENT_ID: ${{ secrets.PROD_AUTH_CLIENT_ID }}
+      AUTH_DOMAIN: ${{ secrets.PROD_AUTH_DOMAIN }}
+      LAUNCHDARKLY_CLIENT_ID: ${{ secrets.PROD_LAUNCHDARKLY_CLIENT_ID }}
+      SEGMENT_WRITEKEY: ${{ secrets.PROD_SEGMENT_WRITEKEY }}
+      DISTRIBUTION_ID: ${{ secrets.PROD_DISTRIBUTION_ID }}
+      DATADOG_RUM_APPLICATION_ID: ${{ secrets.DATADOG_RUM_APPLICATION_ID }}
+      DATADOG_RUM_CLIENT_TOKEN: ${{ secrets.DATADOG_RUM_CLIENT_TOKEN }}
+      HYGRAPH_TOKEN: ${{ secrets.HYGRAPH_TOKEN }}
+      HYGRAPH_URL: ${{ secrets.HYGRAPH_URL }}

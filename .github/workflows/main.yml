@@ -76,7 +76,7 @@ jobs:
     name: Application Form Frontend Deployment
     needs: [changes]
     if: needs.changes.outputs.application_form == 'true' || needs.changes.outputs.pipeline == 'true' || needs.changes.outputs.schema_validation == 'true' || needs.changes.outputs.form_components == 'true'
-    uses: './.github/workflows/static_app.yml'
+    uses: './.github/workflows/frontend_cicd.yml'
     with:
       project_name: application-form
     secrets:

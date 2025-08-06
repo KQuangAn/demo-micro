@@ -1,0 +1,139 @@
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      aws_account_id:
+        required: true
+        type: string
+      project_name:
+        required: true
+        type: string
+
+      pnpm_version:
+        required: false
+        type: string
+        default: 9.4.0
+      node_version:
+        required: false
+        type: string
+        default: 20.x
+      AWS_REGION:
+        required: false
+        type: string
+        default: ap-southeast-2
+      AWS_MGMT_ACCOUNT_ID:
+        required: false
+        type: string
+        default: '040925256309'
+      AWS_OIDC_ROLE:
+        required: false
+        type: string
+        default: github-oidc-deployer
+      AWS_ROLE_NAME:
+        required: false
+        type: string
+        default: InfraDeployAccess
+
+    secrets:
+      npm_token:
+        required: true
+      S3_BUCKET:
+        required: true
+      AUTH_CLIENT_ID:
+        required: true
+      AUTH_DOMAIN:
+        required: true
+      LAUNCHDARKLY_CLIENT_ID:
+        required: true
+      SEGMENT_WRITEKEY:
+        required: true
+      DISTRIBUTION_ID:
+        required: true
+      DATADOG_RUM_APPLICATION_ID:
+        required: true
+      DATADOG_RUM_CLIENT_TOKEN:
+        required: true
+      HYGRAPH_TOKEN:
+        required: true
+      HYGRAPH_URL:
+        required: true
+
+jobs:
+  reusable_deploy:
+    name: Deployment - ${{ inputs.environment }} - ${{ inputs.project_name }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      AWS_ACCOUNT_ID: ${{ inputs.aws_account_id }}
+      AWS_ROLE_NAME: ${{ inputs.aws_role_name }}
+      AWS_REGION: ap-southeast-2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm ${{ inputs.pnpm_version }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.pnpm_version }}
+
+      - name: Use Node.js ${{ inputs.node_version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: pnpm
+
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        with:
+          key: pnpm-packages-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-packages-${{ hashFiles('pnpm-lock.yaml') }}
+            pnpm-packages-
+          path: |
+            ./.npm
+            ./node_modules
+
+      - name: Add NPM token
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.npm_token }}" >> ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.npm_token }}
+
+      - name: Install Dependencies
+        run: pnpm install --shamefully-hoist=true
+      - name: Build validation Library
+        run: pnpm validation:build
+
+      - name: Authenticate AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ inputs.AWS_MGMT_ACCOUNT_ID }}:role/${{ inputs.AWS_OIDC_ROLE }}
+          role-session-name: customer-application-deployment
+          aws-region: ${{ inputs.AWS_REGION }}
+
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ inputs.aws_account_id }}:role/${{ inputs.AWS_ROLE_NAME}}
+          role-session-name: customer-application-deployment
+          aws-region: ${{ inputs.AWS_REGION }}
+          role-chaining: true
+
+      - name: Run deploy script
+        working-directory: apps/${{ inputs.project_name }}
+        env:
+          ENV: ${{ inputs.environment }}
+          GITHUB_SHA: ${{ github.sha }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          AUTH_CLIENT_ID: ${{ secrets.AUTH_CLIENT_ID }}
+          AUTH_DOMAIN: ${{ secrets.AUTH_DOMAIN }}
+          LAUNCH_DARKLY_CLIENT_ID: ${{ secrets.LAUNCHDARKLY_CLIENT_ID }}
+          SEGMENT_WRITEKEY: ${{ secrets.SEGMENT_WRITEKEY }}
+          DISTRIBUTION_ID: ${{ secrets.DISTRIBUTION_ID }}
+          DATADOG_RUM_APPLICATION_ID: ${{ secrets.DATADOG_RUM_APPLICATION_ID }}
+          DATADOG_RUM_CLIENT_TOKEN: ${{ secrets.DATADOG_RUM_CLIENT_TOKEN }}
+          HYGRAPH_TOKEN: ${{ secrets.HYGRAPH_TOKEN }}
+          HYGRAPH_URL: ${{ secrets.HYGRAPH_URL }}
+        run: |
+          ${GITHUB_WORKSPACE}/scripts/apps/build.sh

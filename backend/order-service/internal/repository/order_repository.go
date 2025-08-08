@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"orderservice/graph/model"
+	"orderservice/internal/models"
 	"orderservice/internal/utils"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	pgx "github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/gorm"
 )
 
 type OrderStatus string
@@ -21,31 +22,6 @@ const (
 	OrderStatusShipped   OrderStatus = "SHIPPED"
 )
 
-type Order struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
-type OrderDetail struct {
-	ID         uuid.UUID
-	OrderID    uuid.UUID
-	ProductID  uuid.UUID
-	Quantity   int
-	Price      float64
-	CurrencyID uuid.UUID
-	Status     string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-}
-
-type Currency struct {
-	ID        uuid.UUID
-	Name      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
 type CurrencyLookup struct {
 	IDToName map[uuid.UUID]string
 	NameToID map[string]uuid.UUID
@@ -54,42 +30,42 @@ type CurrencyLookup struct {
 type OrderRepository interface {
 	GetAllOrders(
 		ctx context.Context,
-		tx pgx.Tx,
+		tx *gorm.DB,
 		first *int32, after *time.Time,
-	) ([]*Order, *time.Time, error)
+	) ([]*models.Order, *time.Time, error)
 
-	CreateOrder(ctx context.Context, tx pgx.Tx, user_id uuid.UUID, input []*OrderItemInput) (*Order, error)
-	GetOrderByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*Order, error)
+	CreateOrder(ctx context.Context, tx *gorm.DB, user_id uuid.UUID, input []*OrderItemInput) (*models.Order, error)
+	GetOrderByID(ctx context.Context, tx *gorm.DB, id uuid.UUID) (*models.Order, error)
 
-	//GetOrderByUserId(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*Order, error)
-	//GetOrderWithDetailByOrderIdPaginated(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*Order, error)
+	//GetOrderByUserId(ctx context.Context, tx *gorm.DB, id uuid.UUID) (*models.Order ,  error)
+	//GetOrderWithDetailByOrderIdPaginated(ctx context.Context, tx *gorm.DB, id uuid.UUID) (*models.Order ,  error)
 
-	GetOrderDetailByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*OrderDetail, error)
+	GetOrderDetailByID(ctx context.Context, tx *gorm.DB, id uuid.UUID) (*models.OrderDetail, error)
 
 	GetOrdersByUserId(
 		ctx context.Context,
-		tx pgx.Tx,
+		tx *gorm.DB,
 		userId uuid.UUID,
 		first *int32,
 		after *time.Time,
-	) ([]*Order, *time.Time, error)
+	) ([]*models.Order, *time.Time, error)
 	GetOrdersByUserIdPaginated(
 		ctx context.Context,
-		tx pgx.Tx,
+		tx *gorm.DB,
 		userId uuid.UUID,
 		limit *int32,
 		after *time.Time,
-	) ([]*Order, *time.Time, error)
-	GetOrderDetailByOrderID(ctx context.Context, tx pgx.Tx, orderId uuid.UUID) ([]*OrderDetail, error)
+	) ([]*models.Order, *time.Time, error)
+	GetOrderDetailByOrderID(ctx context.Context, tx *gorm.DB, orderId uuid.UUID) ([]*models.OrderDetail, error)
 
-	GetOrderDetailByOrderIDPaginated(ctx context.Context, tx pgx.Tx, orderId uuid.UUID, limit int32,
-		after time.Time) ([]*OrderDetail, time.Time, error)
+	GetOrderDetailByOrderIDPaginated(ctx context.Context, tx *gorm.DB, orderId uuid.UUID, limit int32,
+		after time.Time) ([]*models.OrderDetail, time.Time, error)
 
-	UpdateOrderDetail(ctx context.Context, tx pgx.Tx, detail OrderDetail) (*OrderDetail, error)
+	UpdateOrderDetail(ctx context.Context, tx *gorm.DB, detail models.OrderDetail) (*models.OrderDetail, error)
 
-	UpdateOrderStatus(ctx context.Context, tx pgx.Tx, orderDetailId uuid.UUID, status model.OrderDetailStatus) (*OrderDetail, error)
+	UpdateOrderStatus(ctx context.Context, tx *gorm.DB, orderDetailId uuid.UUID, status model.OrderDetailStatus) (*models.OrderDetail, error)
 
-	CancelOrder(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*Order, error)
+	CancelOrder(ctx context.Context, tx *gorm.DB, id uuid.UUID) (*models.Order, error)
 }
 
 var (
@@ -99,36 +75,14 @@ var (
 )
 
 type orderRepository struct {
-	db *pgxpool.Pool
+	db *gorm.DB
 }
 
-func NewOrderRepository(db *pgxpool.Pool) OrderRepository {
+func NewOrderRepository(db *gorm.DB) OrderRepository {
 	return &orderRepository{db: db}
 }
 
-func (o *Order) ToModelOrder() *model.Order {
-	return &model.Order{
-		ID:        o.ID,
-		UserID:    o.UserID,
-		CreatedAt: o.CreatedAt,
-		UpdatedAt: o.UpdatedAt,
-	}
-}
-func (d *OrderDetail) ToModelOrderDetail(currencyName string) *model.OrderDetail {
-	return &model.OrderDetail{
-		ID:        d.ID,
-		OrderID:   d.OrderID,
-		ProductID: d.ProductID,
-		Quantity:  int32(d.Quantity),
-		Price:     d.Price,
-		Currency:  currencyName,
-		Status:    model.OrderDetailStatus(d.Status),
-		CreatedAt: d.CreatedAt,
-		UpdatedAt: d.UpdatedAt,
-	}
-}
-
-func NewCurrencyLookup(currencies []*Currency) *CurrencyLookup {
+func NewCurrencyLookup(currencies []*models.Currency) *CurrencyLookup {
 	lookup := &CurrencyLookup{
 		IDToName: make(map[uuid.UUID]string),
 		NameToID: make(map[string]uuid.UUID),
@@ -165,21 +119,6 @@ func buildCursorCondition(after, before time.Time, startIndex int) (string, []an
 	return condition, args
 }
 
-// Helper function to query from tx or pool
-func (r *orderRepository) query(ctx context.Context, tx pgx.Tx, sql string, args ...any) (pgx.Rows, error) {
-	if tx != nil {
-		return tx.Query(ctx, sql, args...)
-	}
-	return r.db.Query(ctx, sql, args...)
-}
-
-func (r *orderRepository) queryRow(ctx context.Context, tx pgx.Tx, sql string, args ...any) pgx.Row {
-	if tx != nil {
-		return tx.QueryRow(ctx, sql, args...)
-	}
-	return r.db.QueryRow(ctx, sql, args...)
-}
-
 type OrderItemInput struct {
 	ProductID string
 	Quantity  int32
@@ -187,23 +126,17 @@ type OrderItemInput struct {
 	Currency  string
 }
 
-func (r *orderRepository) CreateOrder(ctx context.Context, tx pgx.Tx, user_id uuid.UUID, items []*OrderItemInput) (*Order, error) {
+func (r *orderRepository) CreateOrder(ctx context.Context, tx *gorm.DB, user_id uuid.UUID, items []*OrderItemInput) (*models.Order, error) {
 	var order Order
 	order.UserID = user_id
 
-	query := fmt.Sprintf(`
-		INSERT INTO %s (user_id)
-		VALUES ($1)
-		RETURNING id, created_at, updated_at`, orderTableName)
+	order = Order{UserID: user_id, CreatedAt: time.Now(), UpdatedAt: time.Now()}
 
-	err := tx.QueryRow(ctx, query,
-		user_id).Scan(&order.ID, &order.CreatedAt, &order.UpdatedAt)
+	result := tx.Create(&order)
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to insert order: %w", err)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to insert order: %w", result.Error.Error())
 	}
-
-	//get currencies
 
 	query = fmt.Sprintf(`
 		SELECT id, name, created_at, updated_at
@@ -215,9 +148,9 @@ func (r *orderRepository) CreateOrder(ctx context.Context, tx pgx.Tx, user_id uu
 	}
 	defer rows.Close()
 
-	var currencies []*Currency
+	var currencies []*models.Currency
 	for rows.Next() {
-		var currency Currency
+		var currency models.Currency
 		if err := rows.Scan(&currency.ID, &currency.Name, &currency.CreatedAt, &currency.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan currency: %w", err)
 		}
@@ -227,7 +160,7 @@ func (r *orderRepository) CreateOrder(ctx context.Context, tx pgx.Tx, user_id uu
 	lookup := NewCurrencyLookup(currencies)
 
 	// create order details
-	var orderDetails []*OrderDetail
+	var orderDetails []*models.OrderDetail
 	for _, item := range items {
 		productUUID, err := uuid.Parse(item.ProductID)
 		if err != nil {
@@ -286,11 +219,11 @@ func (r *orderRepository) CreateOrder(ctx context.Context, tx pgx.Tx, user_id uu
 
 func (r *orderRepository) GetOrdersByUserId(
 	ctx context.Context,
-	tx pgx.Tx,
+	tx *gorm.DB,
 	userId uuid.UUID,
 	first *int32,
 	after *time.Time,
-) ([]*Order, *time.Time, error) {
+) ([]*models.Order, *time.Time, error) {
 
 	query := fmt.Sprintf(`
 		SELECT id, user_id, created_at, updated_at 
@@ -307,10 +240,10 @@ func (r *orderRepository) GetOrdersByUserId(
 	}
 	defer rows.Close()
 
-	var orders []*Order
+	var orders []*models.Order
 	var next *time.Time
 	for rows.Next() {
-		var o Order
+		var o models.Order
 		if err := rows.Scan(&o.ID, &o.UserID, &o.CreatedAt, &o.UpdatedAt); err != nil {
 			return nil, nil, fmt.Errorf("failed to scan row: %w", err)
 		}
@@ -323,58 +256,43 @@ func (r *orderRepository) GetOrdersByUserId(
 
 func (r *orderRepository) GetAllOrders(
 	ctx context.Context,
-	tx pgx.Tx,
+	tx *gorm.DB,
 	first *int32, after *time.Time,
-) ([]*Order, *time.Time, error) {
+) ([]*models.Order, *time.Time, error) {
+	var orders []*models.Order
 
-	baseQuery := `
-			SELECT
-				o.id,
-				o.user_id,
-				o.created_at,
-				o.updated_at
-			FROM orders o
-		`
+	query := tx.Order("created_at ASC")
 
-	query, params := utils.BuildPaginationQuery(baseQuery, after, first, "o.created_at", 1)
-
-	rows, err := tx.Query(ctx, query, params...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to execute query: %v", err)
-	}
-	defer rows.Close()
-
-	var orders []*Order
-	var next *time.Time
-	for rows.Next() {
-		var order Order
-		if err := rows.Scan(
-			&order.ID,
-			&order.UserID,
-			&order.CreatedAt,
-			&order.UpdatedAt,
-		); err != nil {
-			return nil, nil, fmt.Errorf("failed to scan row: %v", err)
-		}
-
-		orders = append(orders, &order)
-		next = &order.CreatedAt
+	if after != nil {
+		query = query.Where("created_at > ?", *after)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, nil, fmt.Errorf("rows iteration error: %v", err)
+	if first != nil {
+		query = query.Limit(int(*first))
+	} else {
+		query = query.Limit(10)
 	}
 
-	return orders, next, nil
+	result := query.Find(&orders)
+	if result.Error != nil {
+		return nil, nil, fmt.Errorf("failed to execute query: %v", result.Error)
+	}
+
+	var nextCursor *time.Time
+	if len(orders) > 0 {
+		nextCursor = &orders[len(orders)-1].CreatedAt
+	}
+
+	return orders, nextCursor, nil
 }
 
 func (r *orderRepository) GetOrdersByUserIdPaginated(
 	ctx context.Context,
-	tx pgx.Tx,
+	tx *gorm.DB,
 	userId uuid.UUID,
 	limit *int32,
 	after *time.Time,
-) ([]*Order, *time.Time, error) {
+) ([]*models.Order, *time.Time, error) {
 	baseArgs := []any{userId}
 
 	// Use the helper to build the cursor condition and arguments
@@ -397,9 +315,9 @@ func (r *orderRepository) GetOrdersByUserIdPaginated(
 	}
 	defer rows.Close()
 
-	var orders []*Order
+	var orders []*models.Order
 	for rows.Next() {
-		var o Order
+		var o models.Order
 		if err := rows.Scan(&o.ID, &o.UserID, &o.CreatedAt, &o.UpdatedAt); err != nil {
 			return nil, &time.Time{}, fmt.Errorf("failed to scan row: %w", err)
 		}
@@ -414,16 +332,10 @@ func (r *orderRepository) GetOrdersByUserIdPaginated(
 	return orders, &nextCursor, nil
 }
 
-func (r *orderRepository) GetOrderByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*Order, error) {
-	query := fmt.Sprintf(`
-		SELECT id, user_id created_at, updated_at
-		FROM %s WHERE id = $1`, orderTableName)
+func (r *orderRepository) GetOrderByID(ctx context.Context, tx *gorm.DB, id uuid.UUID) (*models.Order, error) {
+	var order models.Order
+	order, err := gorm.G[models.Order](tx).Where("id = ?", 1).First(ctx)
 
-	var order Order
-	err := r.queryRow(ctx, tx, query, id).Scan(
-		&order.ID, &order.UserID,
-		&order.CreatedAt, &order.UpdatedAt,
-	)
 	if err != nil {
 		return nil, fmt.Errorf("order not found: %w", err)
 	}
@@ -431,170 +343,102 @@ func (r *orderRepository) GetOrderByID(ctx context.Context, tx pgx.Tx, id uuid.U
 	return &order, nil
 }
 
-func (r *orderRepository) GetOrderDetailByID(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*OrderDetail, error) {
-	query := fmt.Sprintf(`
-		SELECT id, orders_id, product_id, quantity, price, currency_id, status, created_at, updated_at
-		FROM %s WHERE id = $1`, orderDetailTableName)
+func (r *orderRepository) GetOrderDetailByID(ctx context.Context, tx *gorm.DB, id uuid.UUID) (*models.OrderDetail, error) {
+	var orderDetail models.OrderDetail
+	orderDetail, err := gorm.G[models.OrderDetail](tx).Where("id = ?", 1).First(ctx)
 
-	var d OrderDetail
-	err := r.queryRow(ctx, tx, query, id).Scan(
-		&d.ID, &d.OrderID, &d.ProductID, &d.Quantity,
-		&d.Price, &d.CurrencyID, &d.Status, &d.CreatedAt, &d.UpdatedAt,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("not found: %v", err)
-	}
-
-	return &d, nil
-}
-
-// todo
-func (r *orderRepository) GetOrderByIDPaginated(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*Order, error) {
-	query := fmt.Sprintf(`
-		SELECT id, user_id created_at, updated_at
-		FROM %s WHERE id = $1`, orderTableName)
-
-	var order Order
-	err := r.queryRow(ctx, tx, query, id).Scan(
-		&order.ID, &order.UserID,
-		&order.CreatedAt, &order.UpdatedAt,
-	)
 	if err != nil {
 		return nil, fmt.Errorf("order not found: %w", err)
 	}
 
-	return &order, nil
+	return &orderDetail, nil
 }
 
-func (r *orderRepository) UpdateOrderStatus(ctx context.Context, tx pgx.Tx, orderDetailId uuid.UUID, status model.OrderDetailStatus) (*OrderDetail, error) {
-	query := fmt.Sprintf(`
-		UPDATE %s SET status = $1, updated_at = NOW()
-		WHERE id = $2`, orderDetailTableName)
+// // todo
+// func (r *orderRepository) GetOrderByIDPaginated(ctx context.Context, tx *gorm.DB, id uuid.UUID) (*models.Order, error) {
+// 	query := fmt.Sprintf(`
+// 		SELECT id, user_id created_at, updated_at
+// 		FROM %s WHERE id = $1`, orderTableName)
 
-	_, err := tx.Exec(ctx, query, status.String(), orderDetailId)
+// 	var order Order
+// 	err := r.queryRow(ctx, tx, query, id).Scan(
+// 		&order.ID, &order.UserID,
+// 		&order.CreatedAt, &order.UpdatedAt,
+// 	)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("order not found: %w", err)
+// 	}
+
+// 	return &order, nil
+// }
+
+func (r *orderRepository) UpdateOrderStatus(ctx context.Context, tx *gorm.DB, orderDetailId uuid.UUID, newStatus model.OrderDetailStatus) (int, error) {
+	rows, err := gorm.G[models.OrderDetail](tx).Where("id = ?", orderDetailId).Update(ctx, "Status", newStatus.String())
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to update order: %w", err)
+		return 0, fmt.Errorf("failed to update order: %w", err)
 	}
 
-	return r.GetOrderDetailByID(ctx, tx, orderDetailId)
+	return rows, err
 }
 
-func (r *orderRepository) CancelOrder(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*Order, error) {
-	order, err := r.GetOrderByID(ctx, tx, id)
+func (r *orderRepository) CancelOrder(ctx context.Context, tx *gorm.DB, id uuid.UUID) (int, error) {
+	rowsAffected, err := gorm.G[models.OrderDetail](tx).Where("id = ?", id).Update(ctx, "Status", model.OrderDetailStatusCancelled.String())
+
 	if err != nil {
-		return nil, err
+		return 0, fmt.Errorf("failed to cancel order: %w", err)
 	}
 
-	query := fmt.Sprintf(`UPDATE %s SET status = %s WHERE orders_id = $1`, orderDetailTableName, model.OrderDetailStatusCancelled.String())
-	_, err = tx.Exec(ctx, query, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to cancel order: %w", err)
-	}
-
-	order.UpdatedAt = time.Now()
-
-	return order, nil
+	return rowsAffected, err
 }
 
-func (r *orderRepository) UpdateOrderDetail(ctx context.Context, tx pgx.Tx, detail OrderDetail) (*OrderDetail, error) {
-	query := fmt.Sprintf(`
-		UPDATE %s 
-		SET product_id = $1, quantity = $2, price = $3, currency_id  = $4 , status = $5 
-		WHERE id = $6`, orderDetailTableName)
+func (r *orderRepository) UpdateOrderDetail(ctx context.Context, tx *gorm.DB, detail models.OrderDetail) (int, error) {
+	rowsAffected, err := gorm.G[models.OrderDetail](tx).Where("id = ?", detail.ID).Updates(ctx, detail)
 
-	_, err := tx.Exec(ctx, query,
-		detail.ProductID, detail.Quantity, detail.Price, detail.CurrencyID, detail.Status, detail.ID)
 	if err != nil {
-		return nil, fmt.Errorf("update failed: %v", err)
+		return 0, fmt.Errorf("update failed: %v", err)
 	}
 
-	return &detail, nil
+	return rowsAffected, err
 }
 
-func (r *orderRepository) GetOrderDetailByOrderID(ctx context.Context, tx pgx.Tx, orderId uuid.UUID) ([]*OrderDetail, error) {
+func (r *orderRepository) GetOrderDetailByOrderID(ctx context.Context, tx *gorm.DB, orderId uuid.UUID) ([]*models.OrderDetail, error) {
+	var orderDetails []*models.OrderDetail
 
-	query := fmt.Sprintf(`
-		SELECT id, orders_id, product_id, quantity, price,currency_id, status, created_at, updated_at 
-		FROM %s WHERE orders_id = $1`, orderDetailTableName)
-
-	rows, err := r.query(ctx, tx, query, orderId)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	if err != nil {
+	if err := tx.WithContext(ctx).
+		Where("orders_id = ?", orderId).
+		Find(&orderDetails).Error; err != nil {
 		return nil, fmt.Errorf("not found: %v", err)
 	}
-	var orderDetail []*OrderDetail
 
-	//transform
-	for rows.Next() {
-		var o OrderDetail
-		if err := rows.Scan(
-			&o.ID, &o.OrderID, &o.ProductID, &o.Quantity,
-			&o.Price, &o.CurrencyID, &o.Status, &o.CreatedAt, &o.UpdatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %w", err)
-		}
-		orderDetail = append(orderDetail, &o)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("row iteration error: %w", err)
-	}
-
-	return orderDetail, nil
+	return orderDetails, nil
 }
 func (r *orderRepository) GetOrderDetailByOrderIDPaginated(
 	ctx context.Context,
-	tx pgx.Tx,
+	tx *gorm.DB,
 	orderId uuid.UUID,
 	limit int32,
-	after time.Time) ([]*OrderDetail, time.Time, error) {
+	after time.Time,
+) ([]*models.OrderDetail, time.Time, error) {
+	var orderDetails []*models.OrderDetail
+	query := tx.WithContext(ctx).
+		Where("orders_id = ?", orderId)
 
-	baseArgs := []any{orderId}
-
-	var cursorCondition string
 	if !after.IsZero() {
-		cursorCondition = "AND created_at > $2"
-		baseArgs = append(baseArgs, after)
+		query = query.Where("created_at > ?", after)
 	}
 
-	args := append(baseArgs, limit)
-
-	query := fmt.Sprintf(`
-		SELECT id, orders_id, product_id, quantity, price, currency_id, status, created_at, updated_at 
-		FROM %s 
-		JOIN currencies ON orders_id = $1 %s
-		ORDER BY created_at ASC
-		LIMIT $%d`,
-		orderDetailTableName, cursorCondition, len(args))
-
-	rows, err := r.query(ctx, tx, query, args...)
-	if err != nil {
+	// Fetching the order details with pagination
+	if err := query.Order("created_at ASC").
+		Limit(int(limit)).
+		Find(&orderDetails).Error; err != nil {
 		return nil, time.Time{}, err
 	}
-	defer rows.Close()
 
-	var orderDetail []*OrderDetail
 	var nextCursor time.Time
-	for rows.Next() {
-		var o OrderDetail
-		if err := rows.Scan(
-			&o.ID, &o.OrderID, &o.ProductID, &o.Quantity,
-			&o.Price, &o.CurrencyID, &o.Status, &o.CreatedAt, &o.UpdatedAt,
-		); err != nil {
-			return nil, time.Time{}, fmt.Errorf("failed to scan row: %w", err)
-		}
-		orderDetail = append(orderDetail, &o)
-		nextCursor = o.CreatedAt
+	if len(orderDetails) > 0 {
+		nextCursor = orderDetails[len(orderDetails)-1].CreatedAt
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, time.Time{}, fmt.Errorf("row iteration error: %w", err)
-	}
-
-	return orderDetail, nextCursor, nil
+	return orderDetails, nextCursor, nil
 }

@@ -15,12 +15,11 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/gorm"
 )
 
 type OrderService interface {
-	runTransaction(ctx context.Context, fn func(tx pgx.Tx) (any, error)) (any, error)
+	runTransaction(ctx context.Context, fn func(tx *gorm.DB) (any, error)) (any, error)
 
 	CreateOrder(ctx context.Context, userId uuid.UUID, items []OrderItemInput) (*model.Order, error)
 	GetAllOrders(ctx context.Context, first *int32, after *time.Time) (*model.OrderConnection, error)
@@ -72,10 +71,10 @@ func ToModelOrderItemInputs(items []OrderItemInput) []*repository.OrderItemInput
 type orderService struct {
 	orderRepo    repository.OrderRepository
 	eventEmitter eventemitter.EventEmitter
-	db           *pgxpool.Pool
+	db           *gorm.DB
 }
 
-func NewOrderService(orderRepo repository.OrderRepository, eventEmitter eventemitter.EventEmitter, db *pgxpool.Pool) OrderService {
+func NewOrderService(orderRepo repository.OrderRepository, eventEmitter eventemitter.EventEmitter, db *gorm.DB) OrderService {
 	return &orderService{
 		orderRepo:    orderRepo,
 		eventEmitter: eventEmitter,
@@ -83,27 +82,23 @@ func NewOrderService(orderRepo repository.OrderRepository, eventEmitter eventemi
 	}
 }
 
-func (s *orderService) runTransaction(ctx context.Context, fn func(tx pgx.Tx) (any, error)) (any, error) {
-	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to start transaction: %w", err)
-	}
-	defer tx.Rollback(ctx)
+func (s *orderService) runTransaction(ctx context.Context, fn func(tx *gorm.DB) (any, error)) (any, error) {
+	var result any
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		var err error
+		result, err = fn(tx)
+		return err
+	})
 
-	result, err := fn(tx)
 	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %v", err)
+		return nil, fmt.Errorf("transaction failed: %w", err)
 	}
 
 	return result, nil
 }
 
 func (s *orderService) GetAllOrders(ctx context.Context, first *int32, after *time.Time) (*model.OrderConnection, error) {
-	result, err := s.runTransaction(ctx, func(tx pgx.Tx) (any, error) {
+	result, err := s.runTransaction(ctx, func(tx *gorm.DB) (any, error) {
 		res, _, err := s.orderRepo.GetAllOrders(ctx, tx, first, after)
 		if err != nil {
 			return nil, fmt.Errorf("error querying db, %v", err)
@@ -156,7 +151,7 @@ func (s *orderService) GetAllOrders(ctx context.Context, first *int32, after *ti
 }
 
 func (s *orderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.Order, error) {
-	result, err := s.runTransaction(ctx, func(tx pgx.Tx) (any, error) {
+	result, err := s.runTransaction(ctx, func(tx *gorm.DB) (any, error) {
 		res, err := s.orderRepo.GetOrderByID(ctx, tx, id)
 		if err != nil {
 			return nil, fmt.Errorf("error querying db, %v", err)
@@ -183,7 +178,7 @@ func (s *orderService) GetOrdersByUserId(
 	first *int32,
 	after *time.Time,
 ) (*model.OrderConnection, error) {
-	result, err := s.runTransaction(ctx, func(tx pgx.Tx) (any, error) {
+	result, err := s.runTransaction(ctx, func(tx *gorm.DB) (any, error) {
 		orders, nextCursor, err := s.orderRepo.GetOrdersByUserId(ctx, tx, userId, first, after)
 
 		if err != nil {
@@ -235,7 +230,7 @@ func (s *orderService) CreateOrder(
 	userId uuid.UUID,
 	items []OrderItemInput,
 ) (*model.Order, error) {
-	result, err := s.runTransaction(ctx, func(tx pgx.Tx) (any, error) {
+	result, err := s.runTransaction(ctx, func(tx *gorm.DB) (any, error) {
 		transformedItems := ToModelOrderItemInputs(items)
 		createdOrder, err := s.orderRepo.CreateOrder(ctx, tx, userId, transformedItems)
 
@@ -269,7 +264,7 @@ func (s *orderService) GetAllOrdersDetail(
 	first *int32,
 	after *time.Time,
 ) (*model.OrderDetailConnection, error) {
-	result, err := s.runTransaction(ctx, func(tx pgx.Tx) (any, error) {
+	result, err := s.runTransaction(ctx, func(tx *gorm.DB) (any, error) {
 		baseQuery := `
 			SELECT
 				od.id,
@@ -362,7 +357,7 @@ func (s *orderService) GetOrdersDetailByOrderId(
 	after *time.Time,
 ) (*model.OrderDetailConnection, error) {
 
-	result, err := s.runTransaction(ctx, func(tx pgx.Tx) (any, error) {
+	result, err := s.runTransaction(ctx, func(tx *gorm.DB) (any, error) {
 
 		baseQuery := `
 		SELECT
@@ -466,7 +461,7 @@ func (s *orderService) GetOrdersDetailByOrderId(
 }
 
 func (s *orderService) UpdateOrderDetail(ctx context.Context, orderDetailID uuid.UUID, quantity *int32, status *model.OrderDetailStatus) (*model.OrderDetail, error) {
-	result, err := s.runTransaction(ctx, func(tx pgx.Tx) (any, error) {
+	result, err := s.runTransaction(ctx, func(tx *gorm.DB) (any, error) {
 		var newOrderDetail repository.OrderDetail
 		newOrderDetail.ID = orderDetailID
 		newOrderDetail.Quantity = int(*quantity)
@@ -492,7 +487,7 @@ func (s *orderService) UpdateOrderDetail(ctx context.Context, orderDetailID uuid
 }
 
 func (s *orderService) CancelOrder(ctx context.Context, orderId uuid.UUID) (*model.Order, error) {
-	result, err := s.runTransaction(ctx, func(tx pgx.Tx) (any, error) {
+	result, err := s.runTransaction(ctx, func(tx *gorm.DB) (any, error) {
 		order, err := s.orderRepo.CancelOrder(ctx, tx, orderId)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch order details: %v", err)
@@ -536,7 +531,7 @@ func (s *orderService) HandleInventoryReservedEvent(
 	userID uuid.UUID,
 	items []OrderItemInput,
 ) (*model.Order, error) {
-	result, err := s.runTransaction(ctx, func(tx pgx.Tx) (any, error) {
+	result, err := s.runTransaction(ctx, func(tx *gorm.DB) (any, error) {
 		order, err := s.CreateOrder(ctx, userID, items)
 
 		if err != nil {
@@ -558,7 +553,7 @@ func (s *orderService) HandleInventoryReservedEvent(
 }
 
 func (s *orderService) HandleOrderProcessingNotificationSentEvent(ctx context.Context, orderDetailId uuid.UUID) (*model.Order, error) {
-	result, err := s.runTransaction(ctx, func(tx pgx.Tx) (any, error) {
+	result, err := s.runTransaction(ctx, func(tx *gorm.DB) (any, error) {
 		order, err := s.orderRepo.UpdateOrderStatus(ctx, tx, orderDetailId, model.OrderDetailStatusCompleted)
 
 		if err != nil {

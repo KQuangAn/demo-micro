@@ -6,11 +6,12 @@ import (
 	"log"
 	"os"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 type DBPool struct {
-	Pool *pgxpool.Pool
+	DB *gorm.DB
 }
 
 func NewDBPool(ctx context.Context) (*DBPool, error) {
@@ -19,30 +20,14 @@ func NewDBPool(ctx context.Context) (*DBPool, error) {
 	password := os.Getenv("DATABASE_PASSWORD")
 	dbName := os.Getenv("DATABASE_NAME")
 
-	if url == "" || user == "" || password == "" || dbName == "" {
-		return nil, fmt.Errorf("missing one or more required DB environment variables")
-	}
+	connStr := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable", url, user, password, dbName)
 
-	connStr := fmt.Sprintf("postgres://%s:%s@%s/%s", user, password, url, dbName)
-
-	config, err := pgxpool.ParseConfig(connStr)
+	db, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse pgx config: %w", err)
-	}
-
-	pool, err := pgxpool.NewWithConfig(ctx, config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create db pool: %w", err)
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	log.Println("Connected to the database")
 
-	return &DBPool{Pool: pool}, nil
-}
-
-func (db *DBPool) Close() {
-	if db.Pool != nil {
-		db.Pool.Close()
-		log.Println("Database connection pool closed")
-	}
+	return &DBPool{DB: db}, nil
 }

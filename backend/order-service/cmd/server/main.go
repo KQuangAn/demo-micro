@@ -5,11 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
 	"orderservice/graph"
 	"orderservice/internal/db"
 	eventemitter "orderservice/internal/event_emitter"
@@ -20,6 +15,11 @@ import (
 	"orderservice/internal/utils"
 	"orderservice/internal/validator"
 	"orderservice/pkg/enums"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
@@ -27,12 +27,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	eb "github.com/aws/aws-sdk-go-v2/service/eventbridge"
+	"gorm.io/gorm"
 )
 
 // Helper function to initialize services and repositories
-func initializeServices(ctx context.Context, dbPool *db.DBPool) (services.OrderService, *validator.Validator) {
+func initializeServices(ctx context.Context, dbPool *gorm.DB) (services.OrderService, *validator.Validator) {
 	// Create repositories
-	ordersRepo := repository.NewOrderRepository(dbPool.Pool)
+	ordersRepo := repository.NewOrderRepository(dbPool)
 
 	// Create services
 
@@ -98,15 +99,30 @@ func setup(ctx context.Context) (services.OrderService, *validator.Validator, *e
 	return orderService, v, registry, eh
 }
 
-func main() {
-	file, err := os.OpenFile("../../logs/order_service.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+func setUpLogger() {
+	// Get the current date
+	currentDate := time.Now().Format("2006-01-02") // Format: YYYY-MM-DD
+	logDir := "../../logs"
+	logFilePath := filepath.Join(logDir, currentDate+".log")
 
-	if err != nil {
+	// Create the logs directory if it does not exist
+	if err := os.MkdirAll(logDir, os.ModePerm); err != nil {
 		log.Fatal(err)
 	}
 
+	// Open the log file
+	file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer file.Close()
+
+	// Set the log output to the file
 	log.SetOutput(file)
+}
+
+func main() {
+	setUpLogger()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	utils.LoadEnvFile(ctx)

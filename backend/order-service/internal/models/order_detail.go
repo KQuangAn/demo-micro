@@ -8,7 +8,7 @@ import (
 
 type OrderDetail struct {
 	ID         uuid.UUID
-	OrderID    uuid.UUID
+	OrderID    Order `gorm:"foreignKey:OrderID;references:ID"`
 	ProductID  uuid.UUID
 	Quantity   int
 	Price      float64

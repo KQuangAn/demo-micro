@@ -71,7 +71,7 @@ jobs:
       AWS_REGION: ap-southeast-2
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install pnpm ${{ inputs.pnpm_version }}
         uses: pnpm/action-setup@v4

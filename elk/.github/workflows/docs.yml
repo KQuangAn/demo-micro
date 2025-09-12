@@ -2,20 +2,19 @@ name: Documentation
 
 on:
   schedule:
-    - cron: '0 0 * * 0'  # At 00:00 every Sunday
+    - cron: '0 0 * * 0' # At 00:00 every Sunday
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-
   markdown-check:
     name: Check Markdown
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check links
         uses: UmbrellaDocs/action-linkspector@v1

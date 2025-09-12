@@ -8,7 +8,7 @@ on:
         type: string
     outputs:
       changed:
-        description: "Whether files in the path changed"
+        description: 'Whether files in the path changed'
         value: ${{ jobs.check.outputs.changed }}
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
     outputs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 2 # Fetch the last two commits to compare
 

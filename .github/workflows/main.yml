@@ -19,6 +19,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 
+# variables
 env:
   AWS_REGION: ap-southeast-2
   AWS_MGMT_ACCOUNT_ID: ''
@@ -29,7 +30,7 @@ jobs:
   lint-commit-msg:
     runs-on: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -41,7 +42,7 @@ jobs:
   lint-code:
     runs-on: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -50,6 +51,9 @@ jobs:
         run: npm install
       - name: Lint code
         run: npm run lint
+  code-quality-check:
+    name: Code Quality Check
+    uses: './.github/workflows/code_quality_check.yml'
   changes:
     name: Detect Changed Paths
     runs-on: ubuntu-latest
@@ -60,8 +64,11 @@ jobs:
       customer_connect: ${{ steps.filter.outputs.customer_connect }}
       schema_validation: ${{ steps.filter.outputs.schema_validation }}
       document_upload: ${{ steps.filter.outputs.document_upload }}
+      api-gateway: ${{ steps.filter.outputs.api-gateway }}
+      inventory-service: ${{ steps.filter.outputs.inventory-service }}
+      notification-service: ${{ steps.filter.outputs.notification-service }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
 
       - name: Filter paths
         id: filter
@@ -82,6 +89,8 @@ jobs:
               - 'frontend/apps/dashboard/**'
             frontend_products :
               - 'frontend/apps/product/**'
+            form_components:
+              - 'frontend/form-components/**'
 
   backend_deployment:
     name: Backend Deployment
@@ -99,7 +108,7 @@ jobs:
   frontend_deployment:
     name: Application Form Frontend Deployment
     needs: [changes]
-    if: needs.changes.outputs.application_form == 'true' || needs.changes.outputs.pipeline == 'true' || needs.changes.outputs.schema_validation == 'true' || needs.changes.outputs.form_components == 'true'
+    if: needs.changes.outputs.application_form == 'true' || needs.changes.outputs.pipeline == 'true' || needs.changes.outputs.schema_validation == 'true' || needs.changes.outputs.frontend_dashboard == 'true'
     uses: './.github/workflows/frontend_cicd.yml'
     with:
       project_name: application-form

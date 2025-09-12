@@ -33,7 +33,7 @@ jobs:
       GO111MODULE: on
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v5
 
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
@@ -44,7 +44,7 @@ jobs:
     needs: gosec
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v5
 
       - name: SonarQube Scan
         env:
@@ -60,7 +60,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: sonar
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-go@v4
         with:
           go-version: ${{ inputs.go_version }}

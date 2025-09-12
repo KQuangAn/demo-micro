@@ -2,12 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-
   test:
     name: Test suite
     # List of supported runners:
@@ -18,7 +17,7 @@ jobs:
       COMPOSE_PROJECT_NAME: docker-elk
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       #####################################################
       #                                                   #
@@ -59,7 +58,7 @@ jobs:
       - name: Generate Kibana encryption keys
         run: docker container run --rm docker-elk-kibana bin/kibana-encryption-keys generate -q >>kibana/config/kibana.yml
 
-      - name:  Set up users and roles
+      - name: Set up users and roles
         run: docker compose up setup
 
       #############################

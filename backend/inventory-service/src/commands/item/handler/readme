@@ -1,0 +1,4 @@
+A handler file contains the logic for processing the command. It is responsible for executing the action defined by the command, typically interacting with a service to perform business logic and modify the state.
+
+###Hint
+Inheritance from the Command class is optional. It is only necessary if you want to define the return type of the command.

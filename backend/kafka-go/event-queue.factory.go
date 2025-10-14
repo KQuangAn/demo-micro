@@ -8,6 +8,14 @@ import (
 
 type EventQueueFactory struct{}
 
+type Provider string
+
+const (
+	Kafka Provider = "Kafka"
+	SQS   Provider = "SQS"         
+)
+
+
 func (f *EventQueueFactory) CreateConnection(queueType string, options interface{}) (EventQueue, error) {
 	validate := validator.New()
 

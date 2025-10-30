@@ -1,21 +1,13 @@
 import { GraphQLModule } from '@nestjs/graphql';
 import { InventoryModule } from './inventory/inventory.module';
 import { Module } from '@nestjs/common';
-import {
-  ApolloDriver,
-  ApolloDriverConfig,
-  ApolloFederationDriver,
-} from '@nestjs/apollo';
-import { QueueModule } from './queue/queue.module';
+import { ApolloDriverConfig, ApolloFederationDriver } from '@nestjs/apollo';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { join } from 'path';
 import { getEnv } from 'config';
-import { EventEmitterModule } from './event-emitter/event-emitter.module';
-import { MessageHandlerModule } from './queue/message-handler/message-handler.module';
 import { DateScalar } from './graphql/date.scalar';
-// import { DecimalScalar } from './graphql/decimal.scalar';
 
 @Module({
   imports: [
@@ -30,17 +22,16 @@ import { DateScalar } from './graphql/date.scalar';
         federation: 2,
         path: join(process.cwd(), 'src/schema.gql'),
       },
-      csrfPrevention: false, // temp
+      csrfPrevention: false,
       resolvers: {
         Date: DateScalar,
-       // Decimal: DecimalScalar
       },
     }),
+    // Infrastructure modules
     AuthModule,
-    EventEmitterModule,
-    MessageHandlerModule,
     PrismaModule,
-    QueueModule,
+
+    // Core domain module (Clean Architecture with Kafka)
     InventoryModule,
   ],
   providers: [],

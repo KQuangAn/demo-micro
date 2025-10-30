@@ -15,7 +15,7 @@ export const createEvent = ({
       EventBusName: process.env.EVENT_BUS_NAME,
       Source: process.env.EVENT_BRIDGE_SOURCE,
       DetailType: type,
-      Detail:  JSON.stringify(detail),
+      Detail: JSON.stringify(detail),
     },
   ];
 };

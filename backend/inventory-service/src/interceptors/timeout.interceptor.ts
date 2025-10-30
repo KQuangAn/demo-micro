@@ -4,21 +4,23 @@ import {
   ExecutionContext,
   CallHandler,
   RequestTimeoutException,
+  Logger,
 } from '@nestjs/common';
-import { Observable, throwError, TimeoutError } from 'rxjs';
-import { catchError, timeout } from 'rxjs/operators';
-
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
 @Injectable()
 export class TimeoutInterceptor implements NestInterceptor {
+  private readonly logger = new Logger(TimeoutInterceptor.name);
+
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const TIMEOUT_TIME = Number(process.env.TIMEOUT_TIME) || 30000;
+    const req = context.switchToHttp().getRequest();
+    const method = req.method;
+    const url = req.url;
+    const now = Date.now();
     return next.handle().pipe(
-      timeout(TIMEOUT_TIME),
-      catchError((err) => {
-        if (err instanceof TimeoutError) {
-          return throwError(new RequestTimeoutException());
-        }
-        return throwError(err);
+      tap(() => {
+        const elapsed = Date.now() - now;
+        this.logger.log(`${method} ${url} - ${elapsed}ms`);
       }),
     );
   }

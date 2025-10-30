@@ -5,7 +5,9 @@ import { CustomLoggerService } from './common/logger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.useGlobalInterceptors(new TimeoutInterceptor());
+  if (process.env.ENABLE_TIMEOUT_LOGGER === 'true') {
+    app.useGlobalInterceptors(new TimeoutInterceptor());
+  }
   await app.listen(process.env.PORT ?? 9000);
   const logger = new CustomLoggerService();
   app.useLogger(logger);

@@ -3,7 +3,9 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { ReserveInventoryUseCase } from '../../../application/use-cases/reserve-inventory.use-case';
+import { ReleaseInventoryUseCase } from '../../../application/use-cases/release-inventory.use-case';
 import { ReserveInventoryCommand } from '../../../application/commands/reserve-inventory.command';
+import { ReleaseInventoryCommand } from '../../../application/commands/release-inventory.command';
 import { KafkaMessage } from '../kafka.config';
 
 // Event payload interfaces
@@ -48,7 +50,7 @@ export class OrderEventHandler {
 
   constructor(
     private readonly reserveInventoryUseCase: ReserveInventoryUseCase,
-    // Add more use cases as needed: ReleaseInventoryUseCase, etc.
+    private readonly releaseInventoryUseCase: ReleaseInventoryUseCase,
   ) {}
 
   async handleOrderCreated(
@@ -91,14 +93,15 @@ export class OrderEventHandler {
 
       this.logger.log(`Processing OrderCancelled event for order: ${orderId}`);
 
-      // TODO: Implement ReleaseInventoryUseCase
-      // const command = new ReleaseInventoryCommand(
-      //   items.map((item) => ({
-      //     itemId: item.productId,
-      //     quantity: item.quantity,
-      //   })),
-      // );
-      // await this.releaseInventoryUseCase.execute(command);
+      const command = new ReleaseInventoryCommand(
+        message.payload.userId,
+        items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          reason: 'order_cancelled',
+        })),
+      );
+      await this.releaseInventoryUseCase.execute(command);
 
       this.logger.log(
         `Successfully released inventory for cancelled order: ${orderId}`,
@@ -123,6 +126,9 @@ export class OrderEventHandler {
       // TODO: Implement logic to adjust inventory based on order changes
       // This might involve comparing old vs new quantities and
       // either reserving more or releasing some inventory
+
+      // Placeholder to satisfy async contract while no await is needed
+      await Promise.resolve();
 
       this.logger.log(
         `Successfully processed OrderUpdated event for order: ${orderId}`,

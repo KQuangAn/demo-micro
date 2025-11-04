@@ -7,6 +7,7 @@ import (
 	"log"
 	"orderservice/graph/model"
 	eventemitter "orderservice/internal/event_emitter"
+	"orderservice/internal/models"
 	"orderservice/internal/repository"
 	"orderservice/internal/utils"
 	"orderservice/pkg/enums"
@@ -281,7 +282,7 @@ func (s *orderService) GetAllOrdersDetail(
 		`
 		query, params := utils.BuildPaginationQuery(baseQuery, after, first, "od.created_at", 1)
 
-		rows, err := tx.Query(ctx, query, params...)
+		rows, err := tx.WithContext(ctx).Raw(query, params...).Rows()
 		if err != nil {
 			return nil, fmt.Errorf("failed to execute query: %v", err)
 		}
@@ -379,7 +380,7 @@ func (s *orderService) GetOrdersDetailByOrderId(
 
 		params = append([]any{orderID}, params...)
 
-		rows, err := tx.Query(ctx, query, params...)
+		rows, err := tx.WithContext(ctx).Raw(query, params...).Rows()
 		if err != nil {
 			return nil, fmt.Errorf("query error: %w", err)
 		}
@@ -462,7 +463,7 @@ func (s *orderService) GetOrdersDetailByOrderId(
 
 func (s *orderService) UpdateOrderDetail(ctx context.Context, orderDetailID uuid.UUID, quantity *int32, status *model.OrderDetailStatus) (*model.OrderDetail, error) {
 	result, err := s.runTransaction(ctx, func(tx *gorm.DB) (any, error) {
-		var newOrderDetail repository.OrderDetail
+		var newOrderDetail models.OrderDetail
 		newOrderDetail.ID = orderDetailID
 		newOrderDetail.Quantity = int(*quantity)
 		newOrderDetail.Status = status.String()

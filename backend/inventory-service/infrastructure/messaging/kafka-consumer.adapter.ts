@@ -129,7 +129,7 @@ export class KafkaConsumerAdapter implements OnModuleInit, OnModuleDestroy {
     try {
       const kafkaMessage: KafkaMessage = JSON.parse(
         message.value?.toString() || '{}',
-      );
+      ) as KafkaMessage;
 
       const eventType =
         kafkaMessage.eventType ||

@@ -7,7 +7,6 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { join } from 'path';
 import { getEnv } from 'config';
-import { DateScalar } from './graphql/date.scalar';
 
 @Module({
   imports: [
@@ -24,7 +23,7 @@ import { DateScalar } from './graphql/date.scalar';
       },
       csrfPrevention: false,
       resolvers: {
-        Date: DateScalar,
+        // Date: DateScalar,
       },
     }),
     // Infrastructure modules

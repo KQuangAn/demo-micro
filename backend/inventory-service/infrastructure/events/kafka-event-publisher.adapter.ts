@@ -17,7 +17,7 @@ export class KafkaEventPublisherAdapter implements IEventPublisher {
 
   async publish(event: DomainEvent): Promise<void> {
     try {
-      const topic = this.getTopicForEvent(event);
+      const topic = this.getTopicForEvent();
       const kafkaMessage = this.toKafkaMessage(event);
 
       await this.kafkaProducer.publish(topic, kafkaMessage, event.aggregateId);
@@ -39,7 +39,7 @@ export class KafkaEventPublisherAdapter implements IEventPublisher {
     const eventsByTopic = new Map<string, DomainEvent[]>();
 
     for (const event of events) {
-      const topic = this.getTopicForEvent(event);
+      const topic = this.getTopicForEvent();
       const topicEvents = eventsByTopic.get(topic) || [];
       topicEvents.push(event);
       eventsByTopic.set(topic, topicEvents);
@@ -74,26 +74,9 @@ export class KafkaEventPublisherAdapter implements IEventPublisher {
     }
   }
 
-  private getTopicForEvent(event: DomainEvent): string {
-    const eventName = event.constructor.name;
-
-    // Map domain event names to Kafka topics
-    const topicMapping: Record<string, string> = {
-      InventoryItemCreatedEvent: KAFKA_TOPICS.INVENTORY_CREATED,
-      InventoryItemUpdatedEvent: KAFKA_TOPICS.INVENTORY_UPDATED,
-      InventoryItemDeletedEvent: KAFKA_TOPICS.INVENTORY_DELETED,
-      InventoryItemReservedEvent: KAFKA_TOPICS.INVENTORY_RESERVED,
-      InventoryItemReleasedEvent: KAFKA_TOPICS.INVENTORY_RELEASED,
-      InsufficientInventoryEvent: KAFKA_TOPICS.INSUFFICIENT_INVENTORY,
-    };
-
-    const topic = topicMapping[eventName];
-
-    if (!topic) {
-      throw new Error(`No Kafka topic mapped for event: ${eventName}`);
-    }
-
-    return topic;
+  private getTopicForEvent(): string {
+    // Consolidated stream: all inventory domain events go to a single topic
+    return KAFKA_TOPICS.INVENTORY_EVENTS;
   }
 
   private toKafkaMessage<T extends DomainEvent>(event: T): KafkaMessage {

@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"orderservice/graph/model"
 	"orderservice/internal/models"
-	"orderservice/internal/utils"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	pgx "github.com/jackc/pgx/v5"
 	"gorm.io/gorm"
 )
 

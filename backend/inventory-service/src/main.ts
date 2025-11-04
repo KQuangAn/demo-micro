@@ -13,4 +13,4 @@ async function bootstrap() {
   app.useLogger(logger);
   console.log('app listening on port: ', process.env.PORT ?? 9000);
 }
-bootstrap();
+void bootstrap();

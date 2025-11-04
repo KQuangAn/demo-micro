@@ -3,7 +3,6 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
-  RequestTimeoutException,
   Logger,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
@@ -13,7 +12,9 @@ export class TimeoutInterceptor implements NestInterceptor {
   private readonly logger = new Logger(TimeoutInterceptor.name);
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const req = context.switchToHttp().getRequest();
+    const req = context
+      .switchToHttp()
+      .getRequest<{ method: string; url: string }>();
     const method = req.method;
     const url = req.url;
     const now = Date.now();

@@ -5,16 +5,19 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // Presentation Layer
-import { InventoryController } from './controllers/inventory.controller';
+import { HealthController } from './controllers/health.controller';
 import { InventoryResolver } from './inventory.resolver';
 
 // Application Layer - Use Cases
 import { CreateInventoryItemUseCase } from '../../application/use-cases/create-inventory-item.use-case';
 import { GetInventoryItemUseCase } from '../../application/use-cases/get-inventory-item.use-case';
 import { ReserveInventoryUseCase } from '../../application/use-cases/reserve-inventory.use-case';
+import { ReleaseInventoryUseCase } from '../../application/use-cases/release-inventory.use-case';
 
 // Domain Layer
 import { InventoryDomainService } from '../../domain/services/inventory-domain.service';
+import { IInventoryRepository } from '../../domain/repositories/inventory.repository.interface';
+import { IEventPublisher } from '../../application/ports/event-publisher.interface';
 
 // Infrastructure Layer - Persistence
 import { PrismaInventoryRepository } from '../../infrastructure/persistence/prisma-inventory.repository';
@@ -37,7 +40,7 @@ export const EVENT_PUBLISHER = 'IEventPublisher';
 
 @Module({
   imports: [ConfigModule],
-  controllers: [InventoryController],
+  controllers: [HealthController],
   providers: [
     // Infrastructure - Prisma Service
     PrismaService,
@@ -48,10 +51,19 @@ export const EVENT_PUBLISHER = 'IEventPublisher';
       useFactory: (configService: ConfigService): KafkaConfig => ({
         clientId: configService.get('KAFKA_CLIENT_ID', 'inventory-service'),
         brokers: configService
-          .get('KAFKA_BROKERS', 'localhost:9092,localhost:9093,localhost:9094')
+          .get<string>(
+            'KAFKA_BROKERS',
+            'localhost:9092,localhost:9093,localhost:9094',
+          )
           .split(','),
         connectionTimeout: 10000,
         requestTimeout: 30000,
+        // Comma separated list of topics this service subscribes to
+        subscribeTopics: configService
+          .get<string>('KAFKA_SUBSCRIBE_TOPICS', 'order.events')
+          .split(',')
+          .map((t) => t.trim())
+          .filter((t) => t.length > 0),
         retry: {
           maxRetryTime: 30000,
           initialRetryTime: 300,
@@ -103,28 +115,45 @@ export const EVENT_PUBLISHER = 'IEventPublisher';
     // Application Use Cases - Factory pattern for dependency injection
     {
       provide: CreateInventoryItemUseCase,
-      useFactory: (repository, eventPublisher) => {
+      useFactory: (
+        repository: IInventoryRepository,
+        eventPublisher: IEventPublisher,
+      ) => {
         return new CreateInventoryItemUseCase(repository, eventPublisher);
       },
       inject: [INVENTORY_REPOSITORY, EVENT_PUBLISHER],
     },
     {
       provide: GetInventoryItemUseCase,
-      useFactory: (repository) => {
+      useFactory: (repository: IInventoryRepository) => {
         return new GetInventoryItemUseCase(repository);
       },
       inject: [INVENTORY_REPOSITORY],
     },
     {
       provide: ReserveInventoryUseCase,
-      useFactory: (repository, domainService, eventPublisher) => {
+      useFactory: (
+        repository: IInventoryRepository,
+        eventPublisher: IEventPublisher,
+        domainService: InventoryDomainService,
+      ) => {
         return new ReserveInventoryUseCase(
           repository,
-          domainService,
           eventPublisher,
+          domainService,
         );
       },
-      inject: [INVENTORY_REPOSITORY, InventoryDomainService, EVENT_PUBLISHER],
+      inject: [INVENTORY_REPOSITORY, EVENT_PUBLISHER, InventoryDomainService],
+    },
+    {
+      provide: ReleaseInventoryUseCase,
+      useFactory: (
+        repository: IInventoryRepository,
+        eventPublisher: IEventPublisher,
+      ) => {
+        return new ReleaseInventoryUseCase(repository, eventPublisher);
+      },
+      inject: [INVENTORY_REPOSITORY, EVENT_PUBLISHER],
     },
 
     // Infrastructure - Event Handlers

@@ -31,9 +31,9 @@ import (
 )
 
 // Helper function to initialize services and repositories
-func initializeServices(ctx context.Context, dbPool *gorm.DB) (services.OrderService, *validator.Validator) {
+func initializeServices(ctx context.Context, dbConn *gorm.DB) (services.OrderService, *validator.Validator) {
 	// Create repositories
-	ordersRepo := repository.NewOrderRepository(dbPool)
+	ordersRepo := repository.NewOrderRepository(dbConn)
 
 	// Create services
 
@@ -54,7 +54,7 @@ func initializeServices(ctx context.Context, dbPool *gorm.DB) (services.OrderSer
 
 	emitter := eventemitter.NewEventBridgeEmitter(cfg)
 
-	orderService := services.NewOrderService(ordersRepo, emitter, dbPool.Pool)
+	orderService := services.NewOrderService(ordersRepo, emitter, dbConn)
 
 	// Create validator
 	v := validator.New()
@@ -82,21 +82,27 @@ func graphqlHandler(orderService services.OrderService) http.HandlerFunc {
 }
 
 // setup initializes the services, event handlers, and other components of the application
-func setup(ctx context.Context) (services.OrderService, *validator.Validator, *eventhandler.HandlerRegistry, *eventhandler.EventHandler) {
+func setup(ctx context.Context) (services.OrderService, *validator.Validator, *eventhandler.HandlerRegistry, *eventhandler.EventHandler, func()) {
 	dbPool, err := db.NewDBPool(ctx)
 	if err != nil {
 		log.Fatalf("Failed to connect to DB: %v", err)
 	}
-	//defer dbPool.Close()
+	// Ensure the pool is closed when the app shuts down (call site handles lifecycle)
 
-	orderService, v := initializeServices(ctx, dbPool)
+	orderService, v := initializeServices(ctx, dbPool.DB)
 
 	registry := eventhandler.NewHandlerRegistry()
 	eh := eventhandler.NewEventHandler(registry, v)
 
 	registry.Register(enums.EVENT_TYPE.InventoryReserved.String(), eventhandler.NewInventoryReservedHandler(orderService, v))
 
-	return orderService, v, registry, eh
+	closer := func() {
+		if err := dbPool.Close(); err != nil {
+			log.Printf("error closing DB pool: %v", err)
+		}
+	}
+
+	return orderService, v, registry, eh, closer
 }
 
 func setUpLogger() {
@@ -132,7 +138,7 @@ func main() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
-	orderService, _, _, eh := setup(ctx)
+	orderService, _, _, eh, closeDB := setup(ctx)
 
 	ordersQueueURl := utils.GetEnv("ORDERS_QUEUE_URL", "")
 	maxConsumer := utils.GetEnv("MAX_CONSUMER", 5)
@@ -159,5 +165,6 @@ func main() {
 	defer shutdownCancel()
 	_ = srv.Shutdown(shutdownCtx)
 	cancel() // this stops the SQS consumer
+	closeDB()
 
 }

@@ -2,64 +2,26 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
-type Inventory {
+type InventoryItem {
   id: ID!
   title: String!
   brand: String!
   description: String!
   images: [String!]!
   categories: [String!]!
-  quantity: Int!
-  price: Float!
-  currencyName: String!
-  createdAt: Date!
-  updatedAt: Date!
+  quantity: Float!
+  price: Float
+  currencyName: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
-"""Custom Date scalar type"""
-scalar Date
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
 
 type Query {
-  getInventory(id: ID!): Inventory!
-  allInventory: [Inventory!]!
-}
-
-type Mutation {
-  createInventory(createInventoryInput: CreateInventoryInput!): Inventory!
-  updateInventory(updateInventoryInput: UpdateInventoryInput!): Inventory!
-  removeInventory(id: String!): Inventory!
-  handleReserveInventory(reserveInventoryInput: ReserveInventoryInput!): [Inventory!]!
-}
-
-input CreateInventoryInput {
-  title: String!
-  brand: String!
-  description: String!
-  images: [String!]!
-  categories: [String!]!
-  quantity: Float!
-  price: Float!
-  currencyName: String!
-}
-
-input UpdateInventoryInput {
-  id: String!
-  title: String
-  brand: String
-  description: String
-  images: [String!]
-  categories: [String!]
-  quantity: Float
-  price: Float
-}
-
-input ReserveInventoryInput {
-  userId: String!
-  products: [ProductInput!]!
-}
-
-input ProductInput {
-  productId: String!
-  quantity: Float!
-  currency: String!
+  inventory(id: ID!): InventoryItem!
+  allInventory: [InventoryItem!]!
 }

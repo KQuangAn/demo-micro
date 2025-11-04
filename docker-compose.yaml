@@ -12,191 +12,190 @@ services:
   #     - ./frontend/frontend:/app
   #   working_dir: /app
   #   command: turbo dev
-  # Backend
-  # api-gateway:
-  #   build:
-  #     context: ./backend/api-gateway
-  #   ports:
-  #     - '8080:8080'
-  #   dns:
-  #     - 10.0.2.20
-  #   env_file:
-  #     - ./backend/api-gateway/.env
-  #   environment:
-  #     - PORT=8080
-  #     - AWS_ENDPOINT=http://localstack:4566
-  #     - AWS_REGION=http://localstack:4566
-  #     - ORDER_URL=http://order-service:9001/graphql
-  #     - INVENTORY_URL=http://inventory-service:9000/graphql
-  #     - NOTIFICATION_URL=http://notification-service:9002/graphql
-  #     - NOTIFICATION_GET=http://notification-service:9002/schema
-  #     - REDIS_ADDR=redis:6379
-  #     - REDIS_PASSWORD=pass
-  #   depends_on:
-  #     - order-service
-  #     - notification-service
-  #     - inventory-service
-  #     - redis
-  #     - localstack
-  #   networks:
-  #     - app-network
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+    ports:
+      - '8080:8080'
+    dns:
+      - 10.0.2.20
+    env_file:
+      - ./backend/api-gateway/.env
+    environment:
+      - PORT=8080
+      - AWS_ENDPOINT=http://localstack:4566
+      - AWS_REGION=http://localstack:4566
+      - ORDER_URL=http://order-service:9001/graphql
+      - INVENTORY_URL=http://inventory-service:9000/graphql
+      - NOTIFICATION_URL=http://notification-service:9002/graphql
+      - NOTIFICATION_GET=http://notification-service:9002/schema
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=pass
+    depends_on:
+      - order-service
+      - notification-service
+      - inventory-service
+      - redis
+      - localstack
+    networks:
+      - app-network
 
-  # order-service:
-  #   build:
-  #     context: ./backend/order-service
-  #   ports:
-  #     - '9001:9001'
-  #   env_file:
-  #     - ./backend/order-service/.env
-  #   dns:
-  #     - 10.0.2.20
-  #   environment:
-  #     - PORT=9001
-  #     - DATABASE_URL=order-db:5432
-  #     - AWS_ENDPOINT=http://localstack:4566
-  #   depends_on:
-  #     - order-db
-  #     - localstack
-  #   networks:
-  #     - app-network
+  order-service:
+    build:
+      context: ./backend/order-service
+    ports:
+      - '9001:9001'
+    env_file:
+      - ./backend/order-service/.env
+    dns:
+      - 10.0.2.20
+    environment:
+      - PORT=9001
+      - DATABASE_URL=order-db:5432
+      - AWS_ENDPOINT=http://localstack:4566
+    depends_on:
+      - order-db
+      - localstack
+    networks:
+      - app-network
 
-  # inventory-service:
-  #   build:
-  #     context: ./backend/inventory-service
-  #   ports:
-  #     - '9000:9000'
-  #   dns:
-  #     - 10.0.2.20
-  #   environment:
-  #     - PORT=9000
-  #     - DATABASE_URL=postgres://postgres:postgres@inventory-db:5432/inventory
-  #     - AWS_ACCESS_KEY_ID=test
-  #     - AWS_SECRET_ACCESS_KEY=test
-  #     - AWS_REGION=ap-southeast-1
-  #     - AWS_SESSION_TOKEN=test
-  #     - AWS_ENDPOINT=http://localstack:4566
-  #   env_file:
-  #     - ./backend/inventory-service/.env
-  #   depends_on:
-  #     - inventory-db
-  #     - localstack
-  #   networks:
-  #     - app-network
+  inventory-service:
+    build:
+      context: ./backend/inventory-service
+    ports:
+      - '9000:9000'
+    dns:
+      - 10.0.2.20
+    environment:
+      - PORT=9000
+      - DATABASE_URL=postgres://postgres:postgres@inventory-db:5432/inventory
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=ap-southeast-1
+      - AWS_SESSION_TOKEN=test
+      - AWS_ENDPOINT=http://localstack:4566
+    env_file:
+      - ./backend/inventory-service/.env
+    depends_on:
+      - inventory-db
+      - localstack
+    networks:
+      - app-network
 
-  # notification-service:
-  #   build:
-  #     context: ./backend/notification-service
-  #   ports:
-  #     - '9002:9002'
-  #   environment:
-  #     - AWS_ENDPOINT=http://localstack:4566
-  #     - AWS_ACCESS_KEY_ID=test
-  #     - AWS_SECRET_ACCESS_KEY=test
-  #     - AWS_DEFAULT_REGION=ap-southeast-1
-  #     - AWS_SESSION_TOKEN=test
-  #     - MONGODB_URI=mongodb://admin:root@notification-db:27017/
-  #     - QUEUE_URL=http://localstack:4566/000000000000/notification-queue
-  #     - EVENT_BUS_NAME=evbus
-  #     - EVENT_BRIDGE_SOURCE=com.notification.service
-  #   depends_on:
-  #     - notification-db
-  #     - localstack
-  #   networks:
-  #     - app-network
+  notification-service:
+    build:
+      context: ./backend/notification-service
+    ports:
+      - '9002:9002'
+    environment:
+      - AWS_ENDPOINT=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=ap-southeast-1
+      - AWS_SESSION_TOKEN=test
+      - MONGODB_URI=mongodb://admin:root@notification-db:27017/
+      - QUEUE_URL=http://localstack:4566/000000000000/notification-queue
+      - EVENT_BUS_NAME=evbus
+      - EVENT_BRIDGE_SOURCE=com.notification.service
+    depends_on:
+      - notification-db
+      - localstack
+    networks:
+      - app-network
 
-  # # Databases for Each Service
-  # order-db:
-  #   image: postgres:13
-  #   environment:
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres
-  #     POSTGRES_DB: orders
-  #   ports:
-  #     - '5431:5432'
-  #   volumes:
-  #     - order-db-data:/var/lib/postgresql/data
-  #     - ./backend/order-service/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
-  #   networks:
-  #     - app-network
+  # Databases for Each Service
+  order-db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: orders
+    ports:
+      - '5431:5432'
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+      - ./backend/order-service/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
 
-  # inventory-db:
-  #   image: postgres:13
-  #   environment:
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres
-  #     POSTGRES_DB: inventory
-  #   ports:
-  #     - '5432:5432'
-  #   volumes:
-  #     - inventory-db-data:/var/lib/postgresql/data
-  #     - ./backend/inventory-service/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
-  #   networks:
-  #     - app-network
+  inventory-db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: inventory
+    ports:
+      - '5432:5432'
+    volumes:
+      - inventory-db-data:/var/lib/postgresql/data
+      - ./backend/inventory-service/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
 
-  # notification-db:
-  #   image: mongo:latest
-  #   environment:
-  #     - MONGO_INITDB_DATABASE=noti
-  #     - MONGO_INITDB_ROOT_USERNAME=admin
-  #     - MONGO_INITDB_ROOT_PASSWORD=root
-  #   ports:
-  #     - '27017-27019:27017-27019'
-  #   volumes:
-  #     - mongodbdata:/data/db
-  #     - ./init-mongo.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-  #   restart: always
-  #   networks:
-  #     - app-network
+  notification-db:
+    image: mongo:latest
+    environment:
+      - MONGO_INITDB_DATABASE=noti
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=root
+    ports:
+      - '27017-27019:27017-27019'
+    volumes:
+      - mongodbdata:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    restart: always
+    networks:
+      - app-network
 
-  # localstack:
-  #   image: localstack/localstack
-  #   ports:
-  #     - '4566:4566'
-  #     - '4510-4559:4510-4559'
-  #   environment:
-  #     - AWS_ACCESS_KEY_ID=test
-  #     - AWS_SECRET_ACCESS_KEY=test
-  #     - AWS_REGION=ap-southeast-1
-  #     - DEFAULT_REGION=ap-southeast-1
-  #     - SERVICES=sqs,events
-  #     - DEBUG=${DEBUG:-0}
-  #     - DNS_RESOLVE_IP=10.0.2.20
-  #   volumes:
-  #     - '/var/run/docker.sock:/var/run/docker.sock'
-  #     - ./scripts:/scripts
-  #     - ./volume:/var/lib/localstack
-  #   networks:
-  #     app-network:
-  #       ipv4_address: 10.0.2.20
-  #   post_start:
-  #     - command:
-  #         [
-  #           'sh',
-  #           '-c',
-  #           'ls -la /scripts && chmod +x /scripts/concurent.sh && /scripts/concurent.sh && exec "$@"',
-  #         ]
-  #       user: root
-  #   healthcheck:
-  #     test:
-  #       - CMD
-  #       - bash
-  #       - -c
-  #       - awslocal sqs list-queues
-  #     interval: 100s
-  #     timeout: 10s
-  #     start_period: 10s
-  # redis:
-  #   image: redis:latest
-  #   ports:
-  #     - '6379:6379'
-  #   networks:
-  #     - app-network
-  #   volumes:
-  #     - redis-data:/data
-  #     - ./redis.conf:/usr/local/etc/redis/redis.conf
-  #   command: ['redis-server', '/usr/local/etc/redis/redis.conf']
-  #   environment:
-  #     - REDIS_PASSWORD=pass
+  localstack:
+    image: localstack/localstack
+    ports:
+      - '4566:4566'
+      - '4510-4559:4510-4559'
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=ap-southeast-1
+      - DEFAULT_REGION=ap-southeast-1
+      - SERVICES=sqs,events
+      - DEBUG=${DEBUG:-0}
+      - DNS_RESOLVE_IP=10.0.2.20
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - ./scripts:/scripts
+      - ./volume:/var/lib/localstack
+    networks:
+      app-network:
+        ipv4_address: 10.0.2.20
+    post_start:
+      - command:
+          [
+            'sh',
+            '-c',
+            'ls -la /scripts && chmod +x /scripts/concurent.sh && /scripts/concurent.sh && exec "$@"',
+          ]
+        user: root
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - awslocal sqs list-queues
+      interval: 100s
+      timeout: 10s
+      start_period: 10s
+  redis:
+    image: redis:latest
+    ports:
+      - '6379:6379'
+    networks:
+      - app-network
+    volumes:
+      - redis-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: ['redis-server', '/usr/local/etc/redis/redis.conf']
+    environment:
+      - REDIS_PASSWORD=pass
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.1.0
@@ -209,7 +208,7 @@ services:
     ports:
       - '9200:9200'
     networks:
-       - app-network
+      - app-network
 
   logstash:
     image: docker.elastic.co/logstash/logstash:9.1.0

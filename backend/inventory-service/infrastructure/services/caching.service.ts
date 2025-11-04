@@ -1,23 +1,27 @@
-export class InMemoryCacheProvider implements ICacheProvider {
-    private cache = new Map<string, { value: any, expiresAt?: number }>();
+import { ICacheProvider } from '../../domain/services';
 
-    async get<T>(key: string): Promise<T | undefined> {
+export class InMemoryCacheProvider implements ICacheProvider {
+    private cache = new Map<string, { value: any; expiresAt?: number }>();
+
+    get<T>(key: string): Promise<T | undefined> {
         const entry = this.cache.get(key);
-        if (!entry) return undefined;
+        if (!entry) return Promise.resolve(undefined);
         if (entry.expiresAt && entry.expiresAt < Date.now()) {
             this.cache.delete(key);
-            return undefined;
+            return Promise.resolve(undefined);
         }
-        return entry.value as T;
+        return Promise.resolve(entry.value as T);
     }
 
-    async set<T>(key: string, value: T, ttl?: number): Promise<void> {
+    set<T>(key: string, value: T, ttl?: number): Promise<void> {
         const expiresAt = ttl ? Date.now() + ttl * 1000 : undefined;
         this.cache.set(key, { value, expiresAt });
+        return Promise.resolve();
     }
 
-    async remove(key: string): Promise<void> {
+    remove(key: string): Promise<void> {
         this.cache.delete(key);
+        return Promise.resolve();
     }
 }
 

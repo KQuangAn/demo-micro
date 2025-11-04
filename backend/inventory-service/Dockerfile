@@ -11,8 +11,11 @@ COPY . .
 RUN npx prisma generate --schema=src/prisma/schema.prisma
 
 RUN npm run build
+RUN npm prune --omit=dev
 
 FROM node:23-alpine AS final
+
+RUN apk --no-cache upgrade
 
 WORKDIR /app
 
@@ -24,5 +27,7 @@ ENV NODE_ENV=production
 ENV PORT=9000
 
 EXPOSE 9000
+
+USER node
 
 CMD ["node", "dist/src/main.js"]

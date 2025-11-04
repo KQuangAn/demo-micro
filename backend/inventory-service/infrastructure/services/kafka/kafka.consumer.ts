@@ -1,7 +1,7 @@
 // src/infrastructure/kafka/kafka.consumer.ts
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Kafka, Consumer } from 'kafkajs';
-import { kafkaConfig } from '../../config/kafka.config';
+import { kafkaConfig } from './kafka.config';
 
 @Injectable()
 export class KafkaConsumer implements OnModuleInit {
@@ -16,9 +16,11 @@ export class KafkaConsumer implements OnModuleInit {
     });
 
     await this.consumer.run({
-      eachMessage: async ({ topic, partition, message }) => {
-        console.log(`Received message: ${message.value.toString()}`);
+      eachMessage: ({ message }) => {
+        const body = message.value ? message.value.toString() : '';
+        console.log(`Received message: ${body}`);
         // Here, you can call a service to process the message
+        return Promise.resolve();
       },
     });
   }

@@ -1,0 +1,64 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway-config
+  namespace: demo-micro
+data:
+  PORT: '8080'
+  AWS_REGION: 'ap-southeast-1'
+  ORDER_URL: 'http://order-service:9001/graphql'
+  INVENTORY_URL: 'http://inventory-service:9000/graphql'
+  NOTIFICATION_URL: 'http://notification-service:9002/graphql'
+  NOTIFICATION_GET: 'http://notification-service:9002/schema'
+  REDIS_ADDR: 'redis:6379'
+  AWS_ENDPOINT: 'http://localstack:4566'
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-config
+  namespace: demo-micro
+data:
+  PORT: '9001'
+  DATABASE_URL: 'order-db:5432'
+  AWS_ENDPOINT: 'http://localstack:4566'
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inventory-service-config
+  namespace: demo-micro
+data:
+  PORT: '9000'
+  DATABASE_URL: 'postgres://postgres:postgres@inventory-db:5432/inventory'
+  AWS_REGION: 'ap-southeast-1'
+  AWS_ENDPOINT: 'http://localstack:4566'
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notification-service-config
+  namespace: demo-micro
+data:
+  AWS_ENDPOINT: 'http://localstack:4566'
+  AWS_DEFAULT_REGION: 'ap-southeast-1'
+  MONGODB_URI: 'mongodb://admin:root@notification-db:27017/'
+  QUEUE_URL: 'http://localstack:4566/000000000000/notification-queue'
+  EVENT_BUS_NAME: 'evbus'
+  EVENT_BRIDGE_SOURCE: 'com.notification.service'
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: localstack-config
+  namespace: demo-micro
+data:
+  SERVICES: 'sqs,events'
+  DEFAULT_REGION: 'ap-southeast-1'
+  AWS_REGION: 'ap-southeast-1'
+  DEBUG: '0'

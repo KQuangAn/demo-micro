@@ -1,0 +1,109 @@
+apiVersion: skaffold/v4beta7
+kind: Config
+metadata:
+  name: demo-micro
+
+build:
+  artifacts:
+    - image: api-gateway
+      context: ../backend/api-gateway
+      docker:
+        dockerfile: Dockerfile
+    - image: order-service
+      context: ../backend/order-service
+      docker:
+        dockerfile: Dockerfile
+    - image: inventory-service
+      context: ../backend/inventory-service
+      docker:
+        dockerfile: Dockerfile
+    - image: notification-service
+      context: ../backend/notification-service
+      docker:
+        dockerfile: Dockerfile
+  local:
+    push: false
+    useBuildkit: true
+
+deploy:
+  kubectl:
+    manifests:
+      - namespace.yaml
+      - secrets.yaml
+      - configmap.yaml
+      - pvc.yaml
+      - order-db-statefulset.yaml
+      - inventory-db-statefulset.yaml
+      - mongodb-statefulset.yaml
+      - redis-statefulset.yaml
+      - localstack-deployment.yaml
+      - order-service-deployment.yaml
+      - inventory-service-deployment.yaml
+      - notification-service-deployment.yaml
+      - api-gateway-deployment.yaml
+      - elk-stack.yaml
+      - ingress.yaml
+
+portForward:
+  - resourceType: service
+    resourceName: api-gateway
+    namespace: demo-micro
+    port: 8080
+    localPort: 8080
+  - resourceType: service
+    resourceName: kibana
+    namespace: demo-micro
+    port: 5601
+    localPort: 5601
+
+profiles:
+  - name: dev
+    activation:
+      - command: dev
+    deploy:
+      kubectl:
+        manifests:
+          - namespace.yaml
+          - secrets.yaml
+          - configmap.yaml
+          - pvc.yaml
+          - order-db-statefulset.yaml
+          - inventory-db-statefulset.yaml
+          - mongodb-statefulset.yaml
+          - redis-statefulset.yaml
+          - localstack-deployment.yaml
+          - order-service-deployment.yaml
+          - inventory-service-deployment.yaml
+          - notification-service-deployment.yaml
+          - api-gateway-deployment.yaml
+
+  - name: prod
+    activation:
+      - command: run
+        env: ENVIRONMENT=production
+    build:
+      artifacts:
+        - image: api-gateway
+          context: ../backend/api-gateway
+          docker:
+            dockerfile: Dockerfile
+            buildArgs:
+              ENV: production
+        - image: order-service
+          context: ../backend/order-service
+          docker:
+            dockerfile: Dockerfile
+            buildArgs:
+              ENV: production
+        - image: inventory-service
+          context: ../backend/inventory-service
+          docker:
+            dockerfile: Dockerfile
+            buildArgs:
+              ENV: production
+        - image: notification-service
+          context: ../backend/notification-service
+          docker:
+            dockerfile: Dockerfile
+            buildArgs:
+              ENV: production

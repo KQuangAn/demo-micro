@@ -37,22 +37,20 @@ func initializeServices(ctx context.Context, dbConn *gorm.DB) (services.OrderSer
 
 	// Create services
 
-	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithEndpointResolver(aws.EndpointResolverFunc(
-		func(service, region string) (aws.Endpoint, error) {
-			if service == eb.ServiceID && region == "ap-southeast-1" {
-				return aws.Endpoint{
-					URL: "http://eventbridge.ap-southeast-1.localhost.localstack.cloud:4566",
-				}, nil
-			}
-			return aws.Endpoint{}, &aws.EndpointNotFoundError{}
-		},
-	)))
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion("ap-southeast-1"),
+	)
 
 	if err != nil {
 		log.Fatalf("failed to load AWS config: %v", err)
 	}
 
-	emitter := eventemitter.NewEventBridgeEmitter(cfg)
+	// Create EventBridge client with custom endpoint resolver
+	ebClient := eb.NewFromConfig(cfg, func(o *eb.Options) {
+		o.BaseEndpoint = aws.String("http://eventbridge.ap-southeast-1.localhost.localstack.cloud:4566")
+	})
+
+	emitter := eventemitter.NewEventBridgeEmitterWithClient(ebClient)
 
 	orderService := services.NewOrderService(ordersRepo, emitter, dbConn)
 

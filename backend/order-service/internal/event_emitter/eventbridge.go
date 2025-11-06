@@ -19,6 +19,12 @@ func NewEventBridgeEmitter(cfg aws.Config) *EventBridgeEmitter {
 	}
 }
 
+func NewEventBridgeEmitterWithClient(client *eventbridge.Client) *EventBridgeEmitter {
+	return &EventBridgeEmitter{
+		client: client,
+	}
+}
+
 func (e *EventBridgeEmitter) Emit(ctx context.Context, ev *Event) error {
 	entry := types.PutEventsRequestEntry{
 		Source:       ev.Source,

@@ -1,0 +1,51 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: demo-micro
+
+resources:
+  - namespace.yaml
+  - secrets.yaml
+  - configmap.yaml
+  - pvc.yaml
+  - order-db-statefulset.yaml
+  - inventory-db-statefulset.yaml
+  - mongodb-statefulset.yaml
+  - redis-statefulset.yaml
+  - kafka-stack.yaml
+  - localstack-deployment.yaml
+  - order-service-deployment.yaml
+  - inventory-service-deployment.yaml
+  - notification-service-deployment.yaml
+  - api-gateway-deployment.yaml
+  - elk-stack.yaml
+  - ingress.yaml
+
+commonLabels:
+  app.kubernetes.io/name: demo-micro
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: api-gateway
+    newName: api-gateway
+    newTag: latest
+  - name: order-service
+    newName: order-service
+    newTag: latest
+  - name: inventory-service
+    newName: inventory-service
+    newTag: latest
+  - name: notification-service
+    newName: notification-service
+    newTag: latest
+
+# ConfigMap generator for additional configs
+configMapGenerator:
+  - name: app-version
+    literals:
+      - version=1.0.0
+      - build=local
+# Patches for different environments can be added here
+# Example for production:
+# patches:
+#   - path: patches/production.yaml

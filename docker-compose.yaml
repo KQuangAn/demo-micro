@@ -17,8 +17,6 @@ services:
       context: ./backend/api-gateway
     ports:
       - '8080:8080'
-    dns:
-      - 10.0.2.20
     env_file:
       - ./backend/api-gateway/.env
     environment:
@@ -45,10 +43,6 @@ services:
       context: ./backend/order-service
     ports:
       - '9001:9001'
-    env_file:
-      - ./backend/order-service/.env
-    dns:
-      - 10.0.2.20
     environment:
       - PORT=9001
       - DATABASE_URL=order-db:5432
@@ -64,8 +58,6 @@ services:
       context: ./backend/inventory-service
     ports:
       - '9000:9000'
-    dns:
-      - 10.0.2.20
     environment:
       - PORT=9000
       - DATABASE_URL=postgres://postgres:postgres@inventory-db:5432/inventory
@@ -159,7 +151,6 @@ services:
       - DEFAULT_REGION=ap-southeast-1
       - SERVICES=sqs,events
       - DEBUG=${DEBUG:-0}
-      - DNS_RESOLVE_IP=10.0.2.20
     volumes:
       - '/var/run/docker.sock:/var/run/docker.sock'
       - ./scripts:/scripts

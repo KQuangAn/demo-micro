@@ -1,0 +1,329 @@
+---
+# Zookeeper Service (Headless)
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+  namespace: demo-micro
+  labels:
+    app: zookeeper
+spec:
+  ports:
+    - port: 2181
+      targetPort: 2181
+      name: client
+    - port: 2888
+      targetPort: 2888
+      name: follower
+    - port: 3888
+      targetPort: 3888
+      name: election
+  clusterIP: None
+  selector:
+    app: zookeeper
+
+---
+# Zookeeper StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zookeeper
+  namespace: demo-micro
+spec:
+  serviceName: zookeeper
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+        - name: zookeeper
+          image: confluentinc/cp-zookeeper:7.2.15
+          ports:
+            - containerPort: 2181
+              name: client
+            - containerPort: 2888
+              name: follower
+            - containerPort: 3888
+              name: election
+          env:
+            - name: ZOOKEEPER_CLIENT_PORT
+              value: "2181"
+            - name: ZOOKEEPER_TICK_TIME
+              value: "2000"
+            - name: ZOOKEEPER_SERVER_ID
+              value: "1"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/zookeeper/data
+            - name: log
+              mountPath: /var/lib/zookeeper/log
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            tcpSocket:
+              port: 2181
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 2181
+            initialDelaySeconds: 20
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: zookeeper-data-pvc
+        - name: log
+          persistentVolumeClaim:
+            claimName: zookeeper-log-pvc
+
+---
+# Kafka Service (Headless)
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: demo-micro
+  labels:
+    app: kafka
+spec:
+  ports:
+    - port: 9092
+      targetPort: 9092
+      name: internal
+    - port: 29092
+      targetPort: 29092
+      name: external
+  clusterIP: None
+  selector:
+    app: kafka
+
+---
+# Kafka Service (NodePort for external access)
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-external
+  namespace: demo-micro
+  labels:
+    app: kafka
+spec:
+  type: NodePort
+  ports:
+    - port: 9092
+      targetPort: 9092
+      nodePort: 30092
+      name: kafka
+  selector:
+    app: kafka
+
+---
+# Kafka StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  namespace: demo-micro
+spec:
+  serviceName: kafka
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+        - name: kafka
+          image: confluentinc/cp-kafka:7.2.15
+          ports:
+            - containerPort: 9092
+              name: internal
+            - containerPort: 29092
+              name: external
+          env:
+            - name: KAFKA_BROKER_ID
+              value: "1"
+            - name: KAFKA_ZOOKEEPER_CONNECT
+              value: "zookeeper:2181"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092"
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+            - name: KAFKA_INTER_BROKER_LISTENER_NAME
+              value: "PLAINTEXT"
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+              value: "true"
+            - name: KAFKA_LOG_RETENTION_HOURS
+              value: "168"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/kafka/data
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 30
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: kafka-data-pvc
+
+---
+# Kafdrop Deployment (Kafka Web UI)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafdrop
+  namespace: demo-micro
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafdrop
+  template:
+    metadata:
+      labels:
+        app: kafdrop
+    spec:
+      containers:
+        - name: kafdrop
+          image: obsidiandynamics/kafdrop:4.0.1
+          ports:
+            - containerPort: 9000
+          env:
+            - name: KAFKA_BROKERCONNECT
+              value: "kafka:29092"
+            - name: JVM_OPTS
+              value: "-Xms32M -Xmx64M"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9000
+            initialDelaySeconds: 20
+            periodSeconds: 5
+
+---
+# Kafdrop Service (NodePort)
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafdrop
+  namespace: demo-micro
+spec:
+  type: NodePort
+  selector:
+    app: kafdrop
+  ports:
+    - port: 9000
+      targetPort: 9000
+      nodePort: 30900
+      name: http
+
+---
+# Schema Registry Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: schema-registry
+  namespace: demo-micro
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: schema-registry
+  template:
+    metadata:
+      labels:
+        app: schema-registry
+    spec:
+      containers:
+        - name: schema-registry
+          image: confluentinc/cp-schema-registry:7.2.15
+          ports:
+            - containerPort: 8081
+          env:
+            - name: SCHEMA_REGISTRY_HOST_NAME
+              value: "schema-registry"
+            - name: SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL
+              value: "zookeeper:2181"
+            - name: SCHEMA_REGISTRY_LISTENERS
+              value: "http://0.0.0.0:8081"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /subjects
+              port: 8081
+            initialDelaySeconds: 45
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /subjects
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 5
+
+---
+# Schema Registry Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: schema-registry
+  namespace: demo-micro
+spec:
+  selector:
+    app: schema-registry
+  ports:
+    - port: 8081
+      targetPort: 8081
+      name: http
+  type: ClusterIP

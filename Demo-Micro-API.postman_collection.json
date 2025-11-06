@@ -1,0 +1,848 @@
+{
+	"info": {
+		"_postman_id": "demo-micro-collection-001",
+		"name": "Demo Micro - Microservices API",
+		"description": "Complete API collection for Demo Micro microservices platform\n\nSetup:\n1. Port forward API Gateway: kubectl port-forward service/api-gateway 8080:8080 -n demo-micro\n2. Import this collection into Postman\n3. Start testing!\n\nBase URL: http://localhost:8080/graphql",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Order Service",
+			"item": [
+				{
+					"name": "Create Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"mutation { createOrder(input: {customerId: 1, items: [{productId: 1, quantity: 2}]}) { id customerId status totalAmount items { productId quantity price } createdAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Create a new order with items"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Orders",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"query { orders { id customerId status totalAmount items { productId quantity price } createdAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Get all orders from the system"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Order by ID",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"query { order(id: \\\"1\\\") { id customerId status totalAmount items { productId quantity price } createdAt updatedAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Get a specific order by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Order Status",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"mutation { updateOrderStatus(id: \\\"1\\\", status: \\\"CONFIRMED\\\") { id status updatedAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Update order status. Valid statuses: PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Order Status - SHIPPED",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"mutation { updateOrderStatus(id: \\\"1\\\", status: \\\"SHIPPED\\\") { id status updatedAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Update order status to SHIPPED"
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"mutation { cancelOrder(id: \\\"1\\\") { id status updatedAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Cancel an existing order"
+					},
+					"response": []
+				}
+			],
+			"description": "Order management endpoints"
+		},
+		{
+			"name": "Inventory Service",
+			"item": [
+				{
+					"name": "Create Product",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"mutation { createProduct(input: {name: \\\"Laptop\\\", sku: \\\"LAP-001\\\", quantity: 50, price: 999.99}) { id name sku quantity price status createdAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Create a new product in inventory"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Product - Mouse",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"mutation { createProduct(input: {name: \\\"Wireless Mouse\\\", sku: \\\"MOU-001\\\", quantity: 100, price: 29.99}) { id name sku quantity price status createdAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Create a mouse product"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Product - Keyboard",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"mutation { createProduct(input: {name: \\\"Mechanical Keyboard\\\", sku: \\\"KEY-001\\\", quantity: 75, price: 149.99}) { id name sku quantity price status createdAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Create a keyboard product"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Products",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"query { products { id name sku quantity price status createdAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Get all products from inventory"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Product by ID",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"query { product(id: \\\"1\\\") { id name sku quantity price status createdAt updatedAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Get a specific product by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Product Stock",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"mutation { updateProductStock(id: \\\"1\\\", quantity: 100) { id name quantity updatedAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Update product stock quantity"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Stock Availability",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"query { checkStockAvailability(productId: \\\"1\\\", quantity: 10) { available currentStock requestedQuantity } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Check if product has enough stock"
+					},
+					"response": []
+				},
+				{
+					"name": "Reserve Stock",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"mutation { reserveStock(productId: \\\"1\\\", quantity: 5, orderId: \\\"1\\\") { success message } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Reserve stock for an order"
+					},
+					"response": []
+				}
+			],
+			"description": "Inventory management endpoints"
+		},
+		{
+			"name": "Notification Service",
+			"item": [
+				{
+					"name": "Send Email Notification",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"mutation { sendEmail(input: {to: \\\"customer@example.com\\\", subject: \\\"Order Confirmation\\\", body: \\\"Your order has been confirmed!\\\", orderId: \\\"1\\\"}) { id status sentAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Send email notification to customer"
+					},
+					"response": []
+				},
+				{
+					"name": "Send SMS Notification",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"mutation { sendSMS(input: {phoneNumber: \\\"+1234567890\\\", message: \\\"Your order #123 has been shipped!\\\", orderId: \\\"1\\\"}) { id status sentAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Send SMS notification to customer"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Notifications by Order ID",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"query { notifications(orderId: \\\"1\\\") { id type status sentAt recipient subject message } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Get all notifications for an order"
+					},
+					"response": []
+				}
+			],
+			"description": "Notification service endpoints"
+		},
+		{
+			"name": "Health Checks",
+			"item": [
+				{
+					"name": "API Gateway Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/health",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Check API Gateway health status"
+					},
+					"response": []
+				},
+				{
+					"name": "Order Service Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:9001/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "9001",
+							"path": [
+								"health"
+							]
+						},
+						"description": "Check Order Service health (requires port-forward to 9001)"
+					},
+					"response": []
+				},
+				{
+					"name": "Inventory Service Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:9000/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "9000",
+							"path": [
+								"health"
+							]
+						},
+						"description": "Check Inventory Service health (requires port-forward to 9000)"
+					},
+					"response": []
+				},
+				{
+					"name": "Notification Service Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:9002/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "9002",
+							"path": [
+								"health"
+							]
+						},
+						"description": "Check Notification Service health (requires port-forward to 9002)"
+					},
+					"response": []
+				}
+			],
+			"description": "Service health check endpoints"
+		},
+		{
+			"name": "Complete Test Flow",
+			"item": [
+				{
+					"name": "1. Create Laptop Product",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var response = pm.response.json();",
+									"if (response.data && response.data.createProduct) {",
+									"    pm.environment.set(\"PRODUCT_ID\", response.data.createProduct.id);",
+									"    console.log(\"Product ID saved: \" + response.data.createProduct.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"mutation { createProduct(input: {name: \\\"Laptop\\\", sku: \\\"LAP-001\\\", quantity: 50, price: 999.99}) { id name sku quantity price } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Step 1: Create a product"
+					},
+					"response": []
+				},
+				{
+					"name": "2. View All Products",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"query { products { id name sku quantity price status } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Step 2: View all products"
+					},
+					"response": []
+				},
+				{
+					"name": "3. Create Order",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var response = pm.response.json();",
+									"if (response.data && response.data.createOrder) {",
+									"    pm.environment.set(\"ORDER_ID\", response.data.createOrder.id);",
+									"    console.log(\"Order ID saved: \" + response.data.createOrder.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"mutation { createOrder(input: {customerId: 1, items: [{productId: 1, quantity: 2}]}) { id customerId status totalAmount items { productId quantity price } } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Step 3: Create an order"
+					},
+					"response": []
+				},
+				{
+					"name": "4. View All Orders",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"query { orders { id customerId status totalAmount createdAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Step 4: View all orders"
+					},
+					"response": []
+				},
+				{
+					"name": "5. Check Updated Inventory",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"query { product(id: \\\"1\\\") { id name quantity } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Step 5: Check inventory was updated"
+					},
+					"response": []
+				},
+				{
+					"name": "6. Update Order to CONFIRMED",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"mutation { updateOrderStatus(id: \\\"1\\\", status: \\\"CONFIRMED\\\") { id status updatedAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Step 6: Confirm the order"
+					},
+					"response": []
+				},
+				{
+					"name": "7. Send Confirmation Email",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"mutation { sendEmail(input: {to: \\\"customer@example.com\\\", subject: \\\"Order Confirmed\\\", body: \\\"Your order has been confirmed and is being processed.\\\", orderId: \\\"1\\\"}) { id status sentAt } }\"\n}"
+						},
+						"url": {
+							"raw": "{{BASE_URL}}/graphql",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Step 7: Send confirmation email"
+					},
+					"response": []
+				}
+			],
+			"description": "Run these in sequence to test the complete flow"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "BASE_URL",
+			"value": "http://localhost:8080",
+			"type": "string"
+		}
+	]
+}
+

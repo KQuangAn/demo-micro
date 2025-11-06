@@ -81,11 +81,61 @@ spec:
       labels:
         app: logstash
     spec:
+      initContainers:
+        # Wait for Kafka to be ready before starting Logstash
+        - name: wait-for-kafka
+          image: busybox:1.35
+          command: 
+            - sh
+            - -c
+            - |
+              until nc -z kafka 29092; do
+                echo "Waiting for Kafka to be ready..."
+                sleep 5
+              done
+              echo "Kafka is ready!"
+        # Wait for Elasticsearch to be ready
+        - name: wait-for-elasticsearch
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z elasticsearch 9200; do
+                echo "Waiting for Elasticsearch to be ready..."
+                sleep 5
+              done
+              echo "Elasticsearch is ready!"
       containers:
         - name: logstash
           image: docker.elastic.co/logstash/logstash:9.1.0
           ports:
             - containerPort: 5044
+              name: beats
+              protocol: TCP
+            - containerPort: 50000
+              name: tcp
+              protocol: TCP
+            - containerPort: 9600
+              name: http
+              protocol: TCP
+          env:
+            # Elasticsearch credentials
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-secret
+                  key: ELASTIC_PASSWORD
+            # JVM options for better performance
+            - name: LS_JAVA_OPTS
+              value: "-Xmx512m -Xms512m"
+            # Pipeline settings
+            - name: PIPELINE_WORKERS
+              value: "2"
+            - name: PIPELINE_BATCH_SIZE
+              value: "125"
+            - name: PIPELINE_BATCH_DELAY
+              value: "50"
           volumeMounts:
             - name: config
               mountPath: /usr/share/logstash/pipeline
@@ -94,16 +144,31 @@ spec:
               mountPath: /usr/share/logstash/logs
           resources:
             requests:
-              memory: '512Mi'
-              cpu: '250m'
-            limits:
-              memory: '1Gi'
+              memory: '768Mi'
               cpu: '500m'
+            limits:
+              memory: '1536Mi'
+              cpu: '1000m'
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9600
+            initialDelaySeconds: 90
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9600
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
       volumes:
         - name: config
           configMap:
             name: logstash-config
-            optional: true
         - name: logs
           emptyDir: {}
 ---
@@ -121,6 +186,16 @@ spec:
   ports:
     - port: 5044
       targetPort: 5044
+      name: beats
+      protocol: TCP
+    - port: 50000
+      targetPort: 50000
+      name: tcp
+      protocol: TCP
+    - port: 9600
+      targetPort: 9600
+      name: http
+      protocol: TCP
   type: ClusterIP
 ---
 apiVersion: apps/v1

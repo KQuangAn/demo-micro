@@ -37,35 +37,40 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+K8S_DIR="$(dirname "$SCRIPT_DIR")"
+ROOT_DIR="$(dirname "$K8S_DIR")"
+
 print_info "Deleting Ingress..."
-kubectl delete -f k8s/ingress.yaml --ignore-not-found=true
+kubectl delete -f "$K8S_DIR/manifests/ingress.yaml" --ignore-not-found=true 2>/dev/null
 
 print_info "Deleting API Gateway..."
-kubectl delete -f k8s/api-gateway-deployment.yaml --ignore-not-found=true
+kubectl delete -f "$ROOT_DIR/backend/api-gateway/k8s/" --ignore-not-found=true 2>/dev/null
 
 print_info "Deleting microservices..."
-kubectl delete -f k8s/order-service-deployment.yaml --ignore-not-found=true
-kubectl delete -f k8s/inventory-service-deployment.yaml --ignore-not-found=true
-kubectl delete -f k8s/notification-service-deployment.yaml --ignore-not-found=true
-
-print_info "Deleting LocalStack..."
-kubectl delete -f k8s/localstack-deployment.yaml --ignore-not-found=true
-
-print_info "Deleting ELK stack..."
-kubectl delete -f k8s/elk-stack.yaml --ignore-not-found=true
+kubectl delete -f "$ROOT_DIR/backend/order-service/k8s/deployment.yaml" --ignore-not-found=true 2>/dev/null
+kubectl delete -f "$ROOT_DIR/backend/order-service/k8s/service.yaml" --ignore-not-found=true 2>/dev/null
+kubectl delete -f "$ROOT_DIR/backend/inventory-service/k8s/deployment.yaml" --ignore-not-found=true 2>/dev/null
+kubectl delete -f "$ROOT_DIR/backend/inventory-service/k8s/service.yaml" --ignore-not-found=true 2>/dev/null
+kubectl delete -f "$ROOT_DIR/backend/notification-service/k8s/deployment.yaml" --ignore-not-found=true 2>/dev/null
+kubectl delete -f "$ROOT_DIR/backend/notification-service/k8s/service.yaml" --ignore-not-found=true 2>/dev/null
 
 print_info "Deleting databases..."
-kubectl delete -f k8s/order-db-statefulset.yaml --ignore-not-found=true
-kubectl delete -f k8s/inventory-db-statefulset.yaml --ignore-not-found=true
-kubectl delete -f k8s/mongodb-statefulset.yaml --ignore-not-found=true
-kubectl delete -f k8s/redis-statefulset.yaml --ignore-not-found=true
+kubectl delete -f "$ROOT_DIR/backend/order-service/k8s/database/" --ignore-not-found=true 2>/dev/null
+kubectl delete -f "$ROOT_DIR/backend/inventory-service/k8s/database/" --ignore-not-found=true 2>/dev/null
+kubectl delete -f "$ROOT_DIR/backend/notification-service/k8s/database/" --ignore-not-found=true 2>/dev/null
+
+print_info "Deleting infrastructure..."
+kubectl delete -f "$K8S_DIR/infrastructure/elk/" --ignore-not-found=true 2>/dev/null
+kubectl delete -f "$K8S_DIR/infrastructure/kafka/" --ignore-not-found=true 2>/dev/null
+kubectl delete -f "$K8S_DIR/infrastructure/localstack/" --ignore-not-found=true 2>/dev/null
+kubectl delete -f "$K8S_DIR/infrastructure/redis/" --ignore-not-found=true 2>/dev/null
 
 print_info "Deleting PVCs..."
-kubectl delete -f k8s/pvc.yaml --ignore-not-found=true
+kubectl delete -f "$K8S_DIR/manifests/pvc.yaml" --ignore-not-found=true 2>/dev/null
 
 print_info "Deleting ConfigMaps and Secrets..."
-kubectl delete -f k8s/configmap.yaml --ignore-not-found=true
-kubectl delete -f k8s/secrets.yaml --ignore-not-found=true
+kubectl delete -f "$K8S_DIR/manifests/secrets.yaml" --ignore-not-found=true 2>/dev/null
 
 read -p "Do you want to delete the entire namespace? (y/n) " -n 1 -r
 echo

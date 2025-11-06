@@ -111,91 +111,110 @@ print_success "PVCs created"
 print_info "Step 4: Deploying shared infrastructure..."
 
 # Deploy Redis
-print_info "  → Deploying Redis..."
+print_info "  Deploying Redis..."
 kubectl apply -f "$K8S_DIR/infrastructure/redis/"
 kubectl wait --for=condition=ready pod -l app=redis -n demo-micro --timeout=120s 2>/dev/null || true
-print_success "  ✓ Redis deployed"
+print_success "  Redis deployed"
 
 # Deploy LocalStack
-print_info "  → Deploying LocalStack..."
+print_info "  Deploying LocalStack..."
 kubectl apply -f "$K8S_DIR/infrastructure/localstack/"
 kubectl wait --for=condition=ready pod -l app=localstack -n demo-micro --timeout=120s 2>/dev/null || true
-print_success "  ✓ LocalStack deployed"
+print_success "  LocalStack deployed"
 
 # Deploy Kafka if requested
 if [ "$DEPLOY_KAFKA" = true ]; then
-    print_info "  → Deploying Kafka stack..."
+    print_info "  Deploying Kafka stack..."
     kubectl apply -f "$K8S_DIR/infrastructure/kafka/kafka-stack.yaml"
     kubectl wait --for=condition=ready pod -l app=zookeeper -n demo-micro --timeout=180s 2>/dev/null || true
     kubectl wait --for=condition=ready pod -l app=kafka -n demo-micro --timeout=180s 2>/dev/null || true
-    print_success "  ✓ Kafka stack deployed"
+    print_success "  Kafka stack deployed"
 fi
 
 # Deploy ELK if requested
 if [ "$DEPLOY_ELK" = true ]; then
-    print_info "  → Deploying ELK stack..."
+    print_info "  Deploying ELK stack..."
+    
+    # First deploy Logstash ConfigMap (required for Logstash to connect to Kafka)
+    print_info "    Creating Logstash ConfigMap..."
+    kubectl apply -f "$K8S_DIR/infrastructure/elk/logstash-configmap.yaml"
+    print_success "    Logstash ConfigMap created"
+    
+    # Then deploy the ELK stack
+    print_info "    Deploying Elasticsearch, Logstash, and Kibana..."
     kubectl apply -f "$K8S_DIR/infrastructure/elk/elk-stack.yaml"
+    
+    # Wait for components to be ready
+    print_info "    Waiting for Elasticsearch..."
     kubectl wait --for=condition=ready pod -l app=elasticsearch -n demo-micro --timeout=180s 2>/dev/null || true
-    kubectl wait --for=condition=ready pod -l app=logstash -n demo-micro --timeout=120s 2>/dev/null || true
+    print_success "    Elasticsearch is ready"
+    
+    print_info "    Waiting for Logstash..."
+    kubectl wait --for=condition=ready pod -l app=logstash -n demo-micro --timeout=180s 2>/dev/null || true
+    print_success "    Logstash is ready"
+    
+    print_info "    Waiting for Kibana..."
     kubectl wait --for=condition=ready pod -l app=kibana -n demo-micro --timeout=120s 2>/dev/null || true
-    print_success "  ✓ ELK stack deployed"
+    print_success "    Kibana is ready"
+    
+    print_success "  ELK stack deployed (Kafka integration enabled)"
 fi
 
 # Step 5: Deploy databases
 print_info "Step 5: Deploying databases..."
 
 # Order Service Database
-print_info "  → Deploying Order database..."
+print_info "  Deploying Order database..."
 kubectl apply -f "$ROOT_DIR/backend/order-service/k8s/database/"
 kubectl wait --for=condition=ready pod -l app=order-db -n demo-micro --timeout=180s 2>/dev/null || true
-print_success "  ✓ Order database deployed"
+print_success "  Order database deployed"
 
 # Inventory Service Database
-print_info "  → Deploying Inventory database..."
+print_info "  Deploying Inventory database..."
 kubectl apply -f "$ROOT_DIR/backend/inventory-service/k8s/database/"
 kubectl wait --for=condition=ready pod -l app=inventory-db -n demo-micro --timeout=180s 2>/dev/null || true
-print_success "  ✓ Inventory database deployed"
+print_success "  Inventory database deployed"
 
 # Notification Service Database
-print_info "  → Deploying Notification database..."
+print_info "  Deploying Notification database..."
 kubectl apply -f "$ROOT_DIR/backend/notification-service/k8s/database/"
 kubectl wait --for=condition=ready pod -l app=notification-db -n demo-micro --timeout=180s 2>/dev/null || true
-print_success "  ✓ Notification database deployed"
+print_success "  Notification database deployed"
 
 # Step 6: Deploy microservices
 print_info "Step 6: Deploying microservices..."
 
 # Deploy Order Service
-print_info "  → Deploying Order Service..."
+print_info "  Deploying Order Service..."
 kubectl apply -f "$ROOT_DIR/backend/order-service/k8s/configmap.yaml" 2>/dev/null || true
 kubectl apply -f "$ROOT_DIR/backend/order-service/k8s/service.yaml"
 kubectl apply -f "$ROOT_DIR/backend/order-service/k8s/deployment.yaml"
 kubectl wait --for=condition=ready pod -l app=order-service -n demo-micro --timeout=120s 2>/dev/null || true
-print_success "  ✓ Order Service deployed"
+print_success "  Order Service deployed"
 
 # Deploy Inventory Service
-print_info "  → Deploying Inventory Service..."
+print_info "  Deploying Inventory Service..."
 kubectl apply -f "$ROOT_DIR/backend/inventory-service/k8s/configmap.yaml" 2>/dev/null || true
 kubectl apply -f "$ROOT_DIR/backend/inventory-service/k8s/service.yaml"
 kubectl apply -f "$ROOT_DIR/backend/inventory-service/k8s/deployment.yaml"
 kubectl wait --for=condition=ready pod -l app=inventory-service -n demo-micro --timeout=120s 2>/dev/null || true
-print_success "  ✓ Inventory Service deployed"
+print_success "  Inventory Service deployed"
 
 # Deploy Notification Service
-print_info "  → Deploying Notification Service..."
+print_info "  Deploying Notification Service..."
 kubectl apply -f "$ROOT_DIR/backend/notification-service/k8s/configmap.yaml" 2>/dev/null || true
 kubectl apply -f "$ROOT_DIR/backend/notification-service/k8s/service.yaml"
 kubectl apply -f "$ROOT_DIR/backend/notification-service/k8s/deployment.yaml"
 kubectl wait --for=condition=ready pod -l app=notification-service -n demo-micro --timeout=120s 2>/dev/null || true
-print_success "  ✓ Notification Service deployed"
+print_success "  Notification Service deployed"
 
 # Deploy API Gateway (last, as it depends on other services)
-print_info "  → Deploying API Gateway..."
+print_info "  Deploying API Gateway..."
 kubectl apply -f "$ROOT_DIR/backend/api-gateway/k8s/configmap.yaml" 2>/dev/null || true
 kubectl apply -f "$ROOT_DIR/backend/api-gateway/k8s/service.yaml"
 kubectl apply -f "$ROOT_DIR/backend/api-gateway/k8s/deployment.yaml"
 kubectl wait --for=condition=ready pod -l app=api-gateway -n demo-micro --timeout=120s 2>/dev/null || true
-print_success "  ✓ API Gateway deployed"
+print_success "  API Gateway deployed"
 
 # Step 7: Deploy Ingress (if exists)
 if [ -f "$K8S_DIR/manifests/ingress.yaml" ]; then
@@ -211,18 +230,18 @@ print_success "  Deployment Completed!"
 print_success "==================================="
 echo ""
 print_info "Service URLs:"
-print_info "  → API Gateway: http://localhost:30080"
+print_info "  API Gateway: http://localhost:30080"
 if [ "$DEPLOY_KAFKA" = true ]; then
-    print_info "  → Kafdrop (Kafka UI): http://localhost:30900"
+    print_info "  Kafdrop (Kafka UI): http://localhost:30900"
 fi
 if [ "$DEPLOY_ELK" = true ]; then
-    print_info "  → Kibana: http://localhost:30561"
+    print_info "  Kibana: http://localhost:30561"
 fi
 echo ""
 print_info "Useful Commands:"
-print_info "  → View all resources:  kubectl get all -n demo-micro"
-print_info "  → View pods:           kubectl get pods -n demo-micro"
-print_info "  → View logs:           kubectl logs -f <pod-name> -n demo-micro"
-print_info "  → Run health check:    ./k8s/scripts/health-check.sh"
+print_info "  View all resources:  kubectl get all -n demo-micro"
+print_info "  View pods:           kubectl get pods -n demo-micro"
+print_info "  View logs:           kubectl logs -f <pod-name> -n demo-micro"
+print_info "  Run health check:    ./k8s/scripts/health-check.sh"
 echo ""
 

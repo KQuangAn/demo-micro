@@ -2,6 +2,33 @@
 
 This directory contains Kubernetes manifests for deploying the microservices application to Kubernetes.
 
+## 📁 Structure
+
+**New in v2.0**: We've migrated to a microservices-oriented structure where each service owns its Kubernetes manifests!
+
+```
+backend/
+├── api-gateway/k8s/          # API Gateway K8s files
+├── order-service/k8s/        # Order Service K8s files + database
+├── inventory-service/k8s/    # Inventory Service K8s files + database
+└── notification-service/k8s/ # Notification Service K8s files + database
+
+k8s/
+├── namespace.yaml            # Global resources
+├── secrets.yaml
+├── pvc.yaml
+├── ingress.yaml
+├── deploy.sh                 # Main deployment script
+└── infrastructure/           # Shared services
+    ├── redis/
+    ├── kafka/
+    ├── elk/
+    └── localstack/
+```
+
+📖 **See [STRUCTURE.md](./STRUCTURE.md)** for detailed documentation  
+📖 **See [MIGRATION-GUIDE.md](./MIGRATION-GUIDE.md)** if upgrading from old structure
+
 ## Architecture
 
 The application consists of:
@@ -72,9 +99,16 @@ chmod +x build-images.sh
 ### 3. Deploy to Kubernetes
 
 ```bash
-# Deploy all services
+# Deploy all services (with Kafka and ELK)
 chmod +x deploy.sh
+./deploy.sh --all
+
+# Or deploy without optional services
 ./deploy.sh
+
+# Deploy with specific options
+./deploy.sh --kafka      # Include Kafka stack
+./deploy.sh --elk        # Include ELK stack
 ```
 
 The script will:
@@ -106,39 +140,42 @@ kubectl get pvc -n demo-micro
 
 ## Manual Deployment
 
-If you prefer to deploy manually:
+If you prefer to deploy manually or deploy individual services:
+
+### Deploy Complete Stack
 
 ```bash
 # 1. Create namespace
 kubectl apply -f namespace.yaml
 
-# 2. Create secrets and configmaps
+# 2. Create secrets and PVCs
 kubectl apply -f secrets.yaml
-kubectl apply -f configmap.yaml
-
-# 3. Create PVCs
 kubectl apply -f pvc.yaml
 
-# 4. Deploy databases
-kubectl apply -f order-db-statefulset.yaml
-kubectl apply -f inventory-db-statefulset.yaml
-kubectl apply -f mongodb-statefulset.yaml
-kubectl apply -f redis-statefulset.yaml
+# 3. Deploy infrastructure
+kubectl apply -f infrastructure/redis/statefulset.yaml
+kubectl apply -f infrastructure/localstack/deployment.yaml
+kubectl apply -f infrastructure/kafka/kafka-stack.yaml  # Optional
+kubectl apply -f infrastructure/elk/elk-stack.yaml      # Optional
 
-# 5. Deploy LocalStack
-kubectl apply -f localstack-deployment.yaml
+# 4. Deploy services with databases
+kubectl apply -f backend/order-service/k8s/
+kubectl apply -f backend/inventory-service/k8s/
+kubectl apply -f backend/notification-service/k8s/
+kubectl apply -f backend/api-gateway/k8s/
 
-# 6. Deploy microservices
-kubectl apply -f order-service-deployment.yaml
-kubectl apply -f inventory-service-deployment.yaml
-kubectl apply -f notification-service-deployment.yaml
-kubectl apply -f api-gateway-deployment.yaml
-
-# 7. (Optional) Deploy ELK stack
-kubectl apply -f elk-stack.yaml
-
-# 8. (Optional) Deploy Ingress
+# 5. Deploy Ingress
 kubectl apply -f ingress.yaml
+```
+
+### Deploy Individual Service
+
+```bash
+# Example: Deploy only Order Service
+kubectl apply -f backend/order-service/k8s/configmap.yaml
+kubectl apply -f backend/order-service/k8s/database/statefulset.yaml
+kubectl apply -f backend/order-service/k8s/service.yaml
+kubectl apply -f backend/order-service/k8s/deployment.yaml
 ```
 
 ## Accessing Services
@@ -229,6 +266,63 @@ kubectl port-forward svc/kibana 5601:5601 -n demo-micro
 # Elasticsearch
 kubectl port-forward svc/elasticsearch 9200:9200 -n demo-micro
 ```
+
+## 📋 Working with the New Structure
+
+### Understanding the Layout
+
+Each service now owns its Kubernetes manifests:
+
+- `backend/<service>/k8s/deployment.yaml` - Service deployment
+- `backend/<service>/k8s/service.yaml` - Kubernetes service
+- `backend/<service>/k8s/configmap.yaml` - Service configuration
+- `backend/<service>/k8s/database/` - Service database (if applicable)
+
+Shared infrastructure lives in `k8s/infrastructure/`:
+
+- `redis/` - Redis cache
+- `kafka/` - Kafka messaging (optional)
+- `elk/` - Elasticsearch, Logstash, Kibana (optional)
+- `localstack/` - AWS emulation
+
+### Deploying Individual Services
+
+```bash
+# Deploy Order Service and its database
+kubectl apply -f backend/order-service/k8s/
+
+# Deploy just the Order Service (no database)
+kubectl apply -f backend/order-service/k8s/configmap.yaml
+kubectl apply -f backend/order-service/k8s/service.yaml
+kubectl apply -f backend/order-service/k8s/deployment.yaml
+
+# Update only configuration
+kubectl apply -f backend/order-service/k8s/configmap.yaml
+kubectl rollout restart deployment/order-service -n demo-micro
+```
+
+### Deploying Infrastructure
+
+```bash
+# Deploy Redis only
+kubectl apply -f k8s/infrastructure/redis/
+
+# Deploy Kafka stack
+kubectl apply -f k8s/infrastructure/kafka/
+
+# Deploy ELK stack
+kubectl apply -f k8s/infrastructure/elk/
+```
+
+### Benefits of New Structure
+
+✅ **Service Ownership**: Each team owns their K8s files  
+✅ **Independent Deployment**: Deploy services separately  
+✅ **Version Control**: K8s manifests versioned with code  
+✅ **Better Organization**: Logical grouping of files  
+✅ **Microservices Best Practice**: Industry-standard structure
+
+📖 **See [STRUCTURE.md](./STRUCTURE.md)** for complete documentation
 
 ## Monitoring and Debugging
 

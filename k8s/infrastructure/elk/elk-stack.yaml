@@ -1,9 +1,11 @@
----
 apiVersion: v1
 kind: Service
 metadata:
   name: elasticsearch
   namespace: demo-micro
+  labels:
+    app: elasticsearch
+    component: infrastructure
 spec:
   selector:
     app: elasticsearch
@@ -17,6 +19,9 @@ kind: StatefulSet
 metadata:
   name: elasticsearch
   namespace: demo-micro
+  labels:
+    app: elasticsearch
+    component: infrastructure
 spec:
   serviceName: elasticsearch
   replicas: 1
@@ -63,6 +68,9 @@ kind: Deployment
 metadata:
   name: logstash
   namespace: demo-micro
+  labels:
+    app: logstash
+    component: infrastructure
 spec:
   replicas: 1
   selector:
@@ -104,6 +112,9 @@ kind: Service
 metadata:
   name: logstash
   namespace: demo-micro
+  labels:
+    app: logstash
+    component: infrastructure
 spec:
   selector:
     app: logstash
@@ -117,6 +128,9 @@ kind: Deployment
 metadata:
   name: kibana
   namespace: demo-micro
+  labels:
+    app: kibana
+    component: infrastructure
 spec:
   replicas: 1
   selector:
@@ -155,6 +169,9 @@ kind: Service
 metadata:
   name: kibana
   namespace: demo-micro
+  labels:
+    app: kibana
+    component: infrastructure
 spec:
   selector:
     app: kibana

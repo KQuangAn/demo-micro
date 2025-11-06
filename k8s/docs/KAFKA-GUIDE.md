@@ -86,7 +86,9 @@ kubectl logs -f deployment/kafdrop -n demo-micro
 ## 🌐 Access Services
 
 ### Kafdrop (Web UI)
+
 Access Kafka Web UI at:
+
 - **NodePort**: http://localhost:30900
 - **Port Forward**:
   ```bash
@@ -95,16 +97,22 @@ Access Kafka Web UI at:
   Then open: http://localhost:9000
 
 ### Kafka (Internal)
+
 From within the cluster:
+
 - **Internal**: `kafka:29092`
 - **External**: `kafka:9092`
 
 ### Kafka (External - NodePort)
+
 From your host machine:
+
 - **NodePort**: `localhost:30092`
 
 ### Schema Registry
+
 From within the cluster:
+
 - **Endpoint**: `http://schema-registry:8081`
 
 ## 📝 Common Operations
@@ -247,7 +255,7 @@ const { Kafka } = require('kafkajs');
 
 const kafka = new Kafka({
   clientId: 'my-app',
-  brokers: ['kafka:29092']
+  brokers: ['kafka:29092'],
 });
 
 const consumer = kafka.consumer({ groupId: 'my-group' });
@@ -280,6 +288,7 @@ kubectl get events -n demo-micro --field-selector involvedObject.name=kafka-0
 ### Use Kafdrop for Visual Monitoring
 
 Open Kafdrop at http://localhost:30900 to:
+
 - ✅ View all topics
 - ✅ See message counts
 - ✅ Browse messages
@@ -343,6 +352,7 @@ kubectl get pods -n demo-micro -l app=kafka
 ```
 
 **Note**: When scaling to multiple brokers, update:
+
 - `KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR`
 - `KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR`
 - Topic replication factors
@@ -376,21 +386,25 @@ kubectl delete pvc zookeeper-log-pvc -n demo-micro
 For production deployments:
 
 1. **High Availability**
+
    - Run 3+ Zookeeper instances
    - Run 3+ Kafka brokers
    - Set replication factor ≥ 3
 
 2. **Resource Limits**
+
    - Increase memory for Kafka (2-4GB)
    - Increase CPU for high throughput
    - Use SSD-backed storage
 
 3. **Security**
+
    - Enable SSL/TLS
    - Configure SASL authentication
    - Use network policies
 
 4. **Monitoring**
+
    - Deploy Prometheus + Grafana
    - Use JMX exporters
    - Set up alerts

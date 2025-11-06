@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-config
+  namespace: demo-micro
+  labels:
+    app: order-service
+    service: order-service
+data:
+  PORT: '9001'
+  DATABASE_URL: 'order-db:5432'
+  AWS_ENDPOINT: 'http://localstack:4566'

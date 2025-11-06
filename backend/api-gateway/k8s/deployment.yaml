@@ -1,30 +1,38 @@
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: order-service
+  name: api-gateway
   namespace: demo-micro
+  labels:
+    app: api-gateway
+    service: api-gateway
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: order-service
+      app: api-gateway
   template:
     metadata:
       labels:
-        app: order-service
+        app: api-gateway
     spec:
       containers:
-        - name: order-service
-          image: order-service:latest
+        - name: api-gateway
+          image: api-gateway:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 9001
+            - containerPort: 8080
           envFrom:
             - configMapRef:
-                name: order-service-config
+                name: api-gateway-config
             - secretRef:
                 name: aws-secret
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secret
+                  key: REDIS_PASSWORD
           resources:
             requests:
               memory: '256Mi'
@@ -35,25 +43,12 @@ spec:
           livenessProbe:
             httpGet:
               path: /
-              port: 9001
+              port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /
-              port: 9001
+              port: 8080
             initialDelaySeconds: 20
             periodSeconds: 5
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: order-service
-  namespace: demo-micro
-spec:
-  selector:
-    app: order-service
-  ports:
-    - port: 9001
-      targetPort: 9001
-  type: ClusterIP

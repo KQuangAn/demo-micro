@@ -1,9 +1,11 @@
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: localstack
   namespace: demo-micro
+  labels:
+    app: localstack
+    component: infrastructure
 spec:
   replicas: 1
   selector:
@@ -63,6 +65,9 @@ kind: Service
 metadata:
   name: localstack
   namespace: demo-micro
+  labels:
+    app: localstack
+    component: infrastructure
 spec:
   selector:
     app: localstack
@@ -71,3 +76,17 @@ spec:
       targetPort: 4566
       name: localstack
   type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: localstack-config
+  namespace: demo-micro
+  labels:
+    app: localstack
+    component: infrastructure
+data:
+  SERVICES: 'sqs,events'
+  DEFAULT_REGION: 'ap-southeast-1'
+  AWS_REGION: 'ap-southeast-1'
+  DEBUG: '0'

@@ -1,54 +1,60 @@
----
 apiVersion: v1
 kind: Service
 metadata:
-  name: inventory-db
+  name: notification-db
   namespace: demo-micro
+  labels:
+    app: notification-db
+    service: notification-service
 spec:
   selector:
-    app: inventory-db
+    app: notification-db
   ports:
-    - port: 5432
-      targetPort: 5432
+    - port: 27017
+      targetPort: 27017
+      name: mongo
   clusterIP: None
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: inventory-db
+  name: notification-db
   namespace: demo-micro
+  labels:
+    app: notification-db
+    service: notification-service
 spec:
-  serviceName: inventory-db
+  serviceName: notification-db
   replicas: 1
   selector:
     matchLabels:
-      app: inventory-db
+      app: notification-db
   template:
     metadata:
       labels:
-        app: inventory-db
+        app: notification-db
     spec:
       containers:
-        - name: postgres
-          image: postgres:13
+        - name: mongodb
+          image: mongo:latest
           ports:
-            - containerPort: 5432
+            - containerPort: 27017
           env:
-            - name: POSTGRES_USER
+            - name: MONGO_INITDB_DATABASE
+              value: 'noti'
+            - name: MONGO_INITDB_ROOT_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_USER
-            - name: POSTGRES_PASSWORD
+                  name: mongodb-secret
+                  key: MONGO_INITDB_ROOT_USERNAME
+            - name: MONGO_INITDB_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_PASSWORD
-            - name: POSTGRES_DB
-              value: 'inventory'
+                  name: mongodb-secret
+                  key: MONGO_INITDB_ROOT_PASSWORD
           volumeMounts:
             - name: data
-              mountPath: /var/lib/postgresql/data
+              mountPath: /data/db
             - name: init-script
               mountPath: /docker-entrypoint-initdb.d
               readOnly: true
@@ -62,8 +68,8 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: inventory-db-pvc
+            claimName: mongodb-pvc
         - name: init-script
           configMap:
-            name: inventory-db-init-script
+            name: mongodb-init-script
             optional: true

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inventory-service-config
+  namespace: demo-micro
+  labels:
+    app: inventory-service
+    service: inventory-service
+data:
+  PORT: '9000'
+  DATABASE_URL: 'postgres://postgres:postgres@inventory-db:5432/inventory'
+  AWS_REGION: 'ap-southeast-1'
+  AWS_ENDPOINT: 'http://localstack:4566'

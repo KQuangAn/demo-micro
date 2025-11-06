@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway-config
+  namespace: demo-micro
+  labels:
+    app: api-gateway
+    service: api-gateway
+data:
+  PORT: '8080'
+  AWS_REGION: 'ap-southeast-1'
+  ORDER_URL: 'http://order-service:9001/graphql'
+  INVENTORY_URL: 'http://inventory-service:9000/graphql'
+  NOTIFICATION_URL: 'http://notification-service:9002/graphql'
+  NOTIFICATION_GET: 'http://notification-service:9002/schema'
+  REDIS_ADDR: 'redis:6379'
+  AWS_ENDPOINT: 'http://localstack:4566'

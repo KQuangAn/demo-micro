@@ -70,14 +70,27 @@ func startServer() {
 
 	mux := http.NewServeMux()
 
+	//Initialize Redis
+	if err := redis.Init(); err != nil {
+		panic("Failed to connect to Redis: " + err.Error())
+	}
+
+	// Create Redis services
+	cacheService := redis.NewCacheService(redis.Client(), logger)
+	rateLimiter := redis.NewRateLimiter(redis.Client(), logger)
+
+	logger.Info("Redis services initialized")
+
 	datasourceWatcher := NewDatasourcePoller(httpClient, DatasourcePollerConfig{
 		Services: []ServiceConfig{
 			{Name: "order", URL: os.Getenv("ORDER_URL"), SchemaURL: os.Getenv("ORDER_URL"), Fallback: fallback},
 			{Name: "inventory", URL: os.Getenv("INVENTORY_URL"), SchemaURL: os.Getenv("INVENTORY_URL")},
 			{Name: "notification", URL: os.Getenv("NOTIFICATION_URL"), SchemaURL: os.Getenv("NOTIFICATION_GET"), Method: "GET", ResponseType: "string"},
 		},
-		PollingInterval: 30 * time.Second,
-	})
+		// Poll every 5 minutes (schemas don't change often)
+		// Cache duration also 5 minutes = perfect sync
+		PollingInterval: 5 * time.Minute,
+	}, cacheService)
 
 	p := playground.New(playground.Config{
 		PathPrefix:                      "",
@@ -108,10 +121,6 @@ func startServer() {
 	go datasourceWatcher.Run(ctx)
 
 	gateway.Ready()
-	//Initialize Redis
-	if err := redis.Init(); err != nil {
-		panic("Failed to connect to Redis: " + err.Error())
-	}
 
 	// CORS configuration
 	corsOptions := muxHandler.AllowedOrigins([]string{"http://localhost:3000"}) // Update with your frontend URL
@@ -121,7 +130,20 @@ func startServer() {
 	mux.HandleFunc("/login", appHandler.LoginHandler)
 	mux.HandleFunc("/register", appHandler.RegisterHandler)
 
-	mux.Handle("/query", JWTMiddleware(gateway))
+	// Wrap /query endpoint with middleware: Rate Limiting → Cache → JWT → Gateway
+	mux.Handle("/query",
+		RateLimitMiddleware(
+			GraphQLCacheMiddleware(
+				JWTMiddleware(gateway),
+				cacheService,
+				logger,
+			),
+			rateLimiter,
+			logger,
+		),
+	)
+
+	logger.Info("GraphQL endpoint configured with caching and rate limiting")
 
 	addr := "0.0.0.0:8080"
 	logger.Info("Listening",

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"api-gateway/redis"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -54,16 +55,19 @@ func (g GQLErr) Error() string {
 func NewDatasourcePoller(
 	httpClient *http.Client,
 	config DatasourcePollerConfig,
+	cacheService *redis.CacheService,
 ) *DatasourcePollerPoller {
 	return &DatasourcePollerPoller{
-		httpClient: httpClient,
-		config:     config,
-		sdlMap:     make(map[string]string),
+		httpClient:   httpClient,
+		config:       config,
+		sdlMap:       make(map[string]string),
+		cacheService: cacheService,
 	}
 }
 
 type DatasourcePollerPoller struct {
-	httpClient *http.Client
+	httpClient   *http.Client
+	cacheService *redis.CacheService
 
 	config DatasourcePollerConfig
 	sdlMap map[string]string
@@ -111,6 +115,23 @@ func (d *DatasourcePollerPoller) updateSDLs(ctx context.Context) {
 		go func() {
 			defer wg.Done()
 
+			// Try to get schema from cache first
+			if d.cacheService != nil {
+				cachedSDL, hit, err := d.cacheService.GetCachedSchema(ctx, serviceConf.Name)
+				if hit && err == nil && cachedSDL != "" {
+					log.Printf("Schema cache hit for service: %s", serviceConf.Name)
+					select {
+					case <-ctx.Done():
+					case resultCh <- struct {
+						name string
+						sdl  string
+					}{name: serviceConf.Name, sdl: cachedSDL}:
+					}
+					return
+				}
+			}
+
+			// Cache miss - fetch from service
 			sdl, err := d.fetchServiceSDL(ctx, serviceConf.SchemaURL, serviceConf.Method, serviceConf.ResponseType)
 			if err != nil {
 				log.Println("Failed to get sdl.", err)
@@ -123,6 +144,15 @@ func (d *DatasourcePollerPoller) updateSDLs(ctx context.Context) {
 						log.Println("Failed to get sdl with fallback.", err)
 						return
 					}
+				}
+			}
+
+			// Cache the schema for 5 minutes
+			if d.cacheService != nil && sdl != "" {
+				if err := d.cacheService.CacheSchema(ctx, serviceConf.Name, sdl, 5*time.Minute); err != nil {
+					log.Printf("Failed to cache schema for %s: %v", serviceConf.Name, err)
+				} else {
+					log.Printf("Cached schema for service: %s", serviceConf.Name)
 				}
 			}
 

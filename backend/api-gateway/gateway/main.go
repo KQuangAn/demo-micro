@@ -78,8 +78,36 @@ func startServer() {
 	// Create Redis services
 	cacheService := redis.NewCacheService(redis.Client(), logger)
 	rateLimiter := redis.NewRateLimiter(redis.Client(), logger)
+	
+	// Create Circuit Breaker Manager
+	cbManager := NewCircuitBreakerManager(redis.Client(), logger)
+	
+	// Create circuit breaker for API Gateway with custom config
+	gatewayConfig := redis.CircuitBreakerConfig{
+		MaxFailures:      5,                // Open after 5 consecutive failures
+		Timeout:          60 * time.Second, // Try recovery after 60 seconds
+		MaxRequests:      3,                // Allow 3 test requests in half-open state
+		ResetTimeout:     30 * time.Second, // Reset failure count after 30s
+		FailureThreshold: 50.0,             // 50% failure rate triggers open
+	}
+	gatewayBreaker := cbManager.GetOrCreateBreaker("api-gateway", gatewayConfig)
+	
+	// Create Retry Manager
+	retryManager := redis.NewRetryManager(redis.Client(), logger)
+	
+	// Create retry handler for API Gateway
+	gatewayRetryConfig := redis.RetryConfig{
+		MaxAttempts:  3,                     // Retry up to 3 times (total 3 attempts)
+		InitialDelay: 100 * time.Millisecond, // Start with 100ms delay
+		MaxDelay:     2 * time.Second,       // Cap at 2 seconds
+		Multiplier:   2.0,                   // Double delay each retry (exponential backoff)
+		Jitter:       0.1,                   // 10% jitter to prevent thundering herd
+		RetryOnTimeout: true,                // Retry on timeouts
+		RetryOn5xx:     true,                // Retry on 5xx errors
+	}
+	gatewayRetry := retryManager.GetOrCreateRetry("api-gateway", gatewayRetryConfig)
 
-	logger.Info("Redis services initialized")
+	logger.Info("Redis services initialized (cache, rate limiter, circuit breaker, retry)")
 
 	datasourceWatcher := NewDatasourcePoller(httpClient, DatasourcePollerConfig{
 		Services: []ServiceConfig{
@@ -90,7 +118,7 @@ func startServer() {
 		// Poll every 5 minutes (schemas don't change often)
 		// Cache duration also 5 minutes = perfect sync
 		PollingInterval: 5 * time.Minute,
-	}, cacheService)
+	}, cacheService, cbManager, retryManager)
 
 	p := playground.New(playground.Config{
 		PathPrefix:                      "",
@@ -129,21 +157,31 @@ func startServer() {
 
 	mux.HandleFunc("/login", appHandler.LoginHandler)
 	mux.HandleFunc("/register", appHandler.RegisterHandler)
+	
+	// Health check endpoints
+	mux.HandleFunc("/health/circuit-breakers", cbManager.HealthCheckHandler())
+	mux.HandleFunc("/health/retries", RetryHealthHandler(retryManager))
 
-	// Wrap /query endpoint with middleware: Rate Limiting → Cache → JWT → Gateway
+	// Wrap /query endpoint with middleware: Retry → Circuit Breaker → Rate Limiting → Cache → JWT → Gateway
+	// Order matters: Retry wraps Circuit Breaker (retry before giving up)
 	mux.Handle("/query",
-		RateLimitMiddleware(
-			GraphQLCacheMiddleware(
-				JWTMiddleware(gateway),
-				cacheService,
+		CombinedRetryCircuitBreakerMiddleware(
+			RateLimitMiddleware(
+				GraphQLCacheMiddleware(
+					JWTMiddleware(gateway),
+					cacheService,
+					logger,
+				),
+				rateLimiter,
 				logger,
 			),
-			rateLimiter,
+			gatewayRetry,
+			gatewayBreaker,
 			logger,
 		),
 	)
 
-	logger.Info("GraphQL endpoint configured with caching and rate limiting")
+	logger.Info("GraphQL endpoint configured with retry, circuit breaker, caching, and rate limiting")
 
 	addr := "0.0.0.0:8080"
 	logger.Info("Listening",

@@ -56,18 +56,24 @@ func NewDatasourcePoller(
 	httpClient *http.Client,
 	config DatasourcePollerConfig,
 	cacheService *redis.CacheService,
+	cbManager *CircuitBreakerManager,
+	retryManager *redis.RetryManager,
 ) *DatasourcePollerPoller {
 	return &DatasourcePollerPoller{
 		httpClient:   httpClient,
 		config:       config,
 		sdlMap:       make(map[string]string),
 		cacheService: cacheService,
+		cbManager:    cbManager,
+		retryManager: retryManager,
 	}
 }
 
 type DatasourcePollerPoller struct {
 	httpClient   *http.Client
 	cacheService *redis.CacheService
+	cbManager    *CircuitBreakerManager
+	retryManager *redis.RetryManager
 
 	config DatasourcePollerConfig
 	sdlMap map[string]string
@@ -115,6 +121,34 @@ func (d *DatasourcePollerPoller) updateSDLs(ctx context.Context) {
 		go func() {
 			defer wg.Done()
 
+			// Get or create circuit breaker for this service
+			var breaker *redis.CircuitBreaker
+			var retry *redis.Retry
+			
+			if d.cbManager != nil {
+				subgraphConfig := redis.CircuitBreakerConfig{
+					MaxFailures:      3,                // More sensitive for subgraphs
+					Timeout:          30 * time.Second, // Shorter recovery time
+					MaxRequests:      2,                // Only 2 test requests
+					ResetTimeout:     20 * time.Second,
+					FailureThreshold: 60.0, // 60% failure rate
+				}
+				breaker = d.cbManager.GetOrCreateBreaker("subgraph-"+serviceConf.Name, subgraphConfig)
+			}
+			
+			if d.retryManager != nil {
+				subgraphRetryConfig := redis.RetryConfig{
+					MaxAttempts:    2,                      // 2 retries for schema fetching
+					InitialDelay:   50 * time.Millisecond,  // Start with 50ms
+					MaxDelay:       1 * time.Second,        // Cap at 1 second
+					Multiplier:     2.0,                    // Double delay
+					Jitter:         0.1,                    // 10% jitter
+					RetryOnTimeout: true,
+					RetryOn5xx:     true,
+				}
+				retry = d.retryManager.GetOrCreateRetry("subgraph-"+serviceConf.Name, subgraphRetryConfig)
+			}
+
 			// Try to get schema from cache first
 			if d.cacheService != nil {
 				cachedSDL, hit, err := d.cacheService.GetCachedSchema(ctx, serviceConf.Name)
@@ -131,8 +165,66 @@ func (d *DatasourcePollerPoller) updateSDLs(ctx context.Context) {
 				}
 			}
 
-			// Cache miss - fetch from service
-			sdl, err := d.fetchServiceSDL(ctx, serviceConf.SchemaURL, serviceConf.Method, serviceConf.ResponseType)
+			// Cache miss - fetch from service with retry + circuit breaker protection
+			var sdl string
+			var err error
+			
+			// Wrap everything in retry logic
+			if retry != nil {
+				fetchErr := retry.ExecuteWithCondition(ctx, func(attempt int) error {
+					// Circuit breaker inside retry
+					if breaker != nil {
+						return breaker.Execute(ctx, func() error {
+							fetchedSDL, fetchErr := d.fetchServiceSDL(ctx, serviceConf.SchemaURL, serviceConf.Method, serviceConf.ResponseType)
+							if fetchErr != nil {
+								return fetchErr
+							}
+							sdl = fetchedSDL
+							return nil
+						})
+					}
+					
+					// No circuit breaker, just fetch
+					fetchedSDL, fetchErr := d.fetchServiceSDL(ctx, serviceConf.SchemaURL, serviceConf.Method, serviceConf.ResponseType)
+					if fetchErr != nil {
+						return fetchErr
+					}
+					sdl = fetchedSDL
+					return nil
+				}, func(err error, attempt int) bool {
+					// Don't retry if circuit is open
+					if err == redis.ErrCircuitOpen {
+						log.Printf("Circuit breaker OPEN for service %s, stopping retries", serviceConf.Name)
+						return false
+					}
+					return true
+				})
+				
+				if fetchErr != nil {
+					err = fetchErr
+				}
+			} else if breaker != nil {
+				// No retry, just circuit breaker
+				fetchErr := breaker.Execute(ctx, func() error {
+					fetchedSDL, fetchErr := d.fetchServiceSDL(ctx, serviceConf.SchemaURL, serviceConf.Method, serviceConf.ResponseType)
+					if fetchErr != nil {
+						return fetchErr
+					}
+					sdl = fetchedSDL
+					return nil
+				})
+				
+				if fetchErr != nil {
+					if fetchErr == redis.ErrCircuitOpen {
+						log.Printf("Circuit breaker OPEN for service %s - using fallback", serviceConf.Name)
+					}
+					err = fetchErr
+				}
+			} else {
+				// No retry, no circuit breaker
+				sdl, err = d.fetchServiceSDL(ctx, serviceConf.SchemaURL, serviceConf.Method, serviceConf.ResponseType)
+			}
+			
 			if err != nil {
 				log.Println("Failed to get sdl.", err)
 

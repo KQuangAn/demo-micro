@@ -16,7 +16,7 @@ import (
 func CircuitBreakerMiddleware(next http.Handler, breaker *redis.CircuitBreaker, logger log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		
+
 		// Execute request through circuit breaker
 		err := breaker.Execute(ctx, func() error {
 			// Use a response recorder to capture the response
@@ -24,18 +24,18 @@ func CircuitBreakerMiddleware(next http.Handler, breaker *redis.CircuitBreaker, 
 				ResponseWriter: w,
 				statusCode:     http.StatusOK,
 			}
-			
+
 			// Call the next handler
 			next.ServeHTTP(recorder, r)
-			
+
 			// Treat 5xx errors as failures for circuit breaker
 			if recorder.statusCode >= 500 {
 				return fmt.Errorf("upstream service error: %d", recorder.statusCode)
 			}
-			
+
 			return nil
 		})
-		
+
 		if err != nil {
 			handleCircuitBreakerError(w, r, err, breaker, logger)
 			return
@@ -68,41 +68,41 @@ func (w *circuitBreakerResponseWriter) Write(b []byte) (int, error) {
 // handleCircuitBreakerError handles circuit breaker specific errors
 func handleCircuitBreakerError(w http.ResponseWriter, r *http.Request, err error, breaker *redis.CircuitBreaker, logger log.Logger) {
 	ctx := r.Context()
-	
+
 	switch err {
 	case redis.ErrCircuitOpen:
 		// Circuit is open - service is unavailable
 		metrics, _ := breaker.GetMetrics(ctx)
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("X-Circuit-Breaker-State", "open")
 		w.Header().Set("Retry-After", "60") // Suggest retry after timeout
 		w.WriteHeader(http.StatusServiceUnavailable)
-		
+
 		response := map[string]interface{}{
 			"errors": []map[string]interface{}{
 				{
 					"message": "Service temporarily unavailable - circuit breaker is open",
 					"extensions": map[string]interface{}{
-						"code":           "CIRCUIT_BREAKER_OPEN",
-						"circuit_state":  metrics["state"],
-						"failure_count":  metrics["failure_count"],
-						"retry_after":    60,
+						"code":          "CIRCUIT_BREAKER_OPEN",
+						"circuit_state": metrics["state"],
+						"failure_count": metrics["failure_count"],
+						"retry_after":   60,
 					},
 				},
 			},
 		}
-		
+
 		json.NewEncoder(w).Encode(response)
 		logger.Warn(fmt.Sprintf("Circuit breaker open for request: %s", r.URL.Path))
-		
+
 	case redis.ErrTooManyRequests:
 		// Half-open state, too many concurrent requests
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("X-Circuit-Breaker-State", "half-open")
 		w.Header().Set("Retry-After", "5")
 		w.WriteHeader(http.StatusTooManyRequests)
-		
+
 		response := map[string]interface{}{
 			"errors": []map[string]interface{}{
 				{
@@ -114,14 +114,14 @@ func handleCircuitBreakerError(w http.ResponseWriter, r *http.Request, err error
 				},
 			},
 		}
-		
+
 		json.NewEncoder(w).Encode(response)
-		
+
 	default:
 		// Other errors - treat as service failure
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadGateway)
-		
+
 		response := map[string]interface{}{
 			"errors": []map[string]interface{}{
 				{
@@ -132,7 +132,7 @@ func handleCircuitBreakerError(w http.ResponseWriter, r *http.Request, err error
 				},
 			},
 		}
-		
+
 		json.NewEncoder(w).Encode(response)
 		logger.Error("Circuit breaker error", log.Error(err))
 	}
@@ -159,7 +159,7 @@ func (m *CircuitBreakerManager) GetOrCreateBreaker(serviceName string, config re
 	if breaker, exists := m.breakers[serviceName]; exists {
 		return breaker
 	}
-	
+
 	breaker := redis.NewCircuitBreaker(serviceName, config, m.client, m.logger)
 	m.breakers[serviceName] = breaker
 	return breaker
@@ -174,13 +174,13 @@ func (m *CircuitBreakerManager) GetBreaker(serviceName string) (*redis.CircuitBr
 // GetAllMetrics returns metrics for all circuit breakers
 func (m *CircuitBreakerManager) GetAllMetrics(ctx context.Context) map[string]interface{} {
 	metrics := make(map[string]interface{})
-	
+
 	for name, breaker := range m.breakers {
 		if breakerMetrics, err := breaker.GetMetrics(ctx); err == nil {
 			metrics[name] = breakerMetrics
 		}
 	}
-	
+
 	return metrics
 }
 
@@ -199,11 +199,11 @@ func (m *CircuitBreakerManager) HealthCheckHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
-		
+
 		metrics := m.GetAllMetrics(ctx)
-		
+
 		w.Header().Set("Content-Type", "application/json")
-		
+
 		// Check if any circuit is open
 		allHealthy := true
 		for _, breakerMetrics := range metrics {
@@ -214,19 +214,19 @@ func (m *CircuitBreakerManager) HealthCheckHandler() http.HandlerFunc {
 				}
 			}
 		}
-		
+
 		if allHealthy {
 			w.WriteHeader(http.StatusOK)
 		} else {
 			w.WriteHeader(http.StatusServiceUnavailable)
 		}
-		
+
 		response := map[string]interface{}{
-			"status":          getHealthStatus(allHealthy),
+			"status":           getHealthStatus(allHealthy),
 			"circuit_breakers": metrics,
-			"timestamp":       time.Now().Format(time.RFC3339),
+			"timestamp":        time.Now().Format(time.RFC3339),
 		}
-		
+
 		json.NewEncoder(w).Encode(response)
 	}
 }

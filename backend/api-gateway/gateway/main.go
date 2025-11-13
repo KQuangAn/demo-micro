@@ -78,10 +78,10 @@ func startServer() {
 	// Create Redis services
 	cacheService := redis.NewCacheService(redis.Client(), logger)
 	rateLimiter := redis.NewRateLimiter(redis.Client(), logger)
-	
+
 	// Create Circuit Breaker Manager
 	cbManager := NewCircuitBreakerManager(redis.Client(), logger)
-	
+
 	// Create circuit breaker for API Gateway with custom config
 	gatewayConfig := redis.CircuitBreakerConfig{
 		MaxFailures:      5,                // Open after 5 consecutive failures
@@ -91,19 +91,19 @@ func startServer() {
 		FailureThreshold: 50.0,             // 50% failure rate triggers open
 	}
 	gatewayBreaker := cbManager.GetOrCreateBreaker("api-gateway", gatewayConfig)
-	
+
 	// Create Retry Manager
 	retryManager := redis.NewRetryManager(redis.Client(), logger)
-	
+
 	// Create retry handler for API Gateway
 	gatewayRetryConfig := redis.RetryConfig{
-		MaxAttempts:  3,                     // Retry up to 3 times (total 3 attempts)
-		InitialDelay: 100 * time.Millisecond, // Start with 100ms delay
-		MaxDelay:     2 * time.Second,       // Cap at 2 seconds
-		Multiplier:   2.0,                   // Double delay each retry (exponential backoff)
-		Jitter:       0.1,                   // 10% jitter to prevent thundering herd
-		RetryOnTimeout: true,                // Retry on timeouts
-		RetryOn5xx:     true,                // Retry on 5xx errors
+		MaxAttempts:    3,                      // Retry up to 3 times (total 3 attempts)
+		InitialDelay:   100 * time.Millisecond, // Start with 100ms delay
+		MaxDelay:       2 * time.Second,        // Cap at 2 seconds
+		Multiplier:     2.0,                    // Double delay each retry (exponential backoff)
+		Jitter:         0.1,                    // 10% jitter to prevent thundering herd
+		RetryOnTimeout: true,                   // Retry on timeouts
+		RetryOn5xx:     true,                   // Retry on 5xx errors
 	}
 	gatewayRetry := retryManager.GetOrCreateRetry("api-gateway", gatewayRetryConfig)
 
@@ -157,7 +157,7 @@ func startServer() {
 
 	mux.HandleFunc("/login", appHandler.LoginHandler)
 	mux.HandleFunc("/register", appHandler.RegisterHandler)
-	
+
 	// Health check endpoints
 	mux.HandleFunc("/health/circuit-breakers", cbManager.HealthCheckHandler())
 	mux.HandleFunc("/health/retries", RetryHealthHandler(retryManager))

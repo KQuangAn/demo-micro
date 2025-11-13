@@ -485,7 +485,8 @@ All three features are now live and protecting your API Gateway! 🎉
 
 ### 4. Circuit Breaker Pattern 🔌
 
-**Files:** 
+**Files:**
+
 - `backend/api-gateway/redis/circuit_breaker.go`
 - `backend/api-gateway/gateway/circuit_breaker_middleware.go`
 
@@ -514,6 +515,7 @@ All three features are now live and protecting your API Gateway! 🎉
 **Configuration:**
 
 API Gateway Circuit Breaker:
+
 ```go
 MaxFailures:      5              // Open after 5 consecutive failures
 Timeout:          60s            // Try recovery after 60 seconds
@@ -523,6 +525,7 @@ FailureThreshold: 50.0           // 50% failure rate triggers open
 ```
 
 Subgraph Circuit Breakers (per service):
+
 ```go
 MaxFailures:      3              // More sensitive (3 failures)
 Timeout:          30s            // Faster recovery (30 seconds)
@@ -534,11 +537,13 @@ FailureThreshold: 60.0           // 60% failure rate
 **How it works:**
 
 1. **Closed State** → Normal operation
+
    - Request succeeds → Reset failure count
    - Request fails → Increment failure count
    - Failure count ≥ 5 → Open circuit
 
 2. **Open State** → Failing fast
+
    - All requests fail immediately with 503
    - After 60s timeout → Transition to Half-Open
 
@@ -721,7 +726,8 @@ circuit:<service-name>:last_failure   # Last failure timestamp
 
 ### 5. Retry Pattern 🔄
 
-**Files:** 
+**Files:**
+
 - `backend/api-gateway/redis/retry.go`
 - `backend/api-gateway/gateway/retry_middleware.go`
 
@@ -744,6 +750,7 @@ circuit:<service-name>:last_failure   # Last failure timestamp
 **Configuration:**
 
 API Gateway Retry:
+
 ```go
 MaxAttempts:    3                      // Total 3 attempts (1 initial + 2 retries)
 InitialDelay:   100ms                  // First retry after 100ms
@@ -755,6 +762,7 @@ RetryOn5xx:     true                   // Retry on 5xx errors
 ```
 
 Subgraph Retry:
+
 ```go
 MaxAttempts:    2                      // 2 attempts for schema fetching
 InitialDelay:   50ms                   // Start with 50ms

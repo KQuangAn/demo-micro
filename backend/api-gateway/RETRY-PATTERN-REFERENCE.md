@@ -11,45 +11,48 @@ delay += random(-jitter × delay, +jitter × delay)
 ## Example Timeline
 
 **Configuration:**
+
 - InitialDelay: 100ms
 - Multiplier: 2.0
 - MaxDelay: 2s
 - Jitter: 0.1 (10%)
 
 **Execution:**
+
 ```
 T=0ms      Attempt 1: Execute immediately
            ↓ FAIL (503 Service Unavailable)
-           
+
 T=0ms      Calculate backoff: 100ms × 2^0 = 100ms
            Add jitter: 100ms +/- 10ms = 90-110ms
-           
+
 T=105ms    Attempt 2: Execute after 105ms
            ↓ FAIL (502 Bad Gateway)
-           
+
 T=105ms    Calculate backoff: 100ms × 2^1 = 200ms
            Add jitter: 200ms +/- 20ms = 180-220ms
-           
+
 T=310ms    Attempt 3: Execute after 205ms more
            ↓ SUCCESS ✅
-           
+
 Total time: 310ms (vs 0ms instant failure)
 Success rate improved from 0% to 100%!
 ```
 
 ## Configuration Comparison
 
-| Parameter | API Gateway | Subgraph | Purpose |
-|-----------|-------------|----------|---------|
-| MaxAttempts | 3 | 2 | Total tries |
-| InitialDelay | 100ms | 50ms | First retry delay |
-| MaxDelay | 2s | 1s | Cap on delay |
-| Multiplier | 2.0 | 2.0 | Growth rate |
-| Jitter | 0.1 | 0.1 | Randomness (10%) |
+| Parameter    | API Gateway | Subgraph | Purpose           |
+| ------------ | ----------- | -------- | ----------------- |
+| MaxAttempts  | 3           | 2        | Total tries       |
+| InitialDelay | 100ms       | 50ms     | First retry delay |
+| MaxDelay     | 2s          | 1s       | Cap on delay      |
+| Multiplier   | 2.0         | 2.0      | Growth rate       |
+| Jitter       | 0.1         | 0.1      | Randomness (10%)  |
 
 ## Retryable vs Non-Retryable Errors
 
 ### ✅ Retryable (Will Retry)
+
 ```
 HTTP Status Codes:
 - 502 Bad Gateway
@@ -66,6 +69,7 @@ Error Types:
 ```
 
 ### ❌ Non-Retryable (Fail Immediately)
+
 ```
 - Circuit breaker is OPEN (no point retrying)
 - 4xx client errors (except 408, 429)
@@ -77,11 +81,13 @@ Error Types:
 ## Metrics
 
 ### Check Retry Health
+
 ```bash
 curl http://localhost:8080/health/retries | jq
 ```
 
 **Response:**
+
 ```json
 {
   "retry_metrics": {
@@ -98,6 +104,7 @@ curl http://localhost:8080/health/retries | jq
 ```
 
 ### Redis Keys
+
 ```bash
 redis-cli KEYS "retry:metrics:*"
 
@@ -108,6 +115,7 @@ retry:metrics:api-gateway:failure    # Failed operations
 ```
 
 ### Calculate Metrics
+
 ```bash
 # Get values
 ATTEMPTS=$(redis-cli GET retry:metrics:api-gateway:attempts)
@@ -124,6 +132,7 @@ echo "Avg Retries: $(echo "scale=2; $ATTEMPTS / ($SUCCESS + $FAILURE)" | bc)"
 ## Integration with Circuit Breaker
 
 ### Flow Diagram
+
 ```
 Request
   ↓
@@ -147,6 +156,7 @@ Attempt 1 → [Circuit Breaker] → [Check State]
 ```
 
 ### Smart Retry Logic
+
 ```go
 // Pseudo-code
 func shouldRetry(err error, attempt int) bool {
@@ -155,17 +165,17 @@ func shouldRetry(err error, attempt int) bool {
         log("Circuit open, stopping retries")
         return false
     }
-    
+
     // Don't retry if max attempts reached
     if attempt >= maxAttempts {
         return false
     }
-    
+
     // Retry on transient errors
     if isTransientError(err) {
         return true
     }
-    
+
     return false
 }
 ```
@@ -173,6 +183,7 @@ func shouldRetry(err error, attempt int) bool {
 ## Common Scenarios
 
 ### Scenario 1: Transient Network Glitch
+
 ```
 T=0ms    Attempt 1 → Network timeout
 T=100ms  Attempt 2 → Success ✅
@@ -180,6 +191,7 @@ Result: Request succeeded (vs failing immediately)
 ```
 
 ### Scenario 2: Service Rolling Update
+
 ```
 T=0ms    Attempt 1 → Pod terminating (503)
 T=100ms  Attempt 2 → Pod still terminating (503)
@@ -188,6 +200,7 @@ Result: Seamless deployment (user doesn't notice)
 ```
 
 ### Scenario 3: Service Completely Down
+
 ```
 T=0ms    Attempt 1 → Failed (503)
 T=100ms  Attempt 2 → Failed (503)
@@ -198,6 +211,7 @@ Result: Fast failure after reasonable attempts
 ```
 
 ### Scenario 4: Rate Limited
+
 ```
 T=0ms    Attempt 1 → 429 Too Many Requests
 T=100ms  Attempt 2 → 429 Too Many Requests
@@ -208,6 +222,7 @@ Result: Automatic backoff respects rate limits
 ## Best Practices
 
 ### ✅ DO
+
 - Use exponential backoff to prevent overwhelming recovering services
 - Add jitter to prevent thundering herd (synchronized retries)
 - Set reasonable max delay (2-5 seconds)
@@ -216,6 +231,7 @@ Result: Automatic backoff respects rate limits
 - Retry idempotent operations safely
 
 ### ❌ DON'T
+
 - Retry indefinitely (set max attempts)
 - Use linear backoff (doesn't give service time to recover)
 - Retry on client errors (4xx except 408, 429)
@@ -225,6 +241,7 @@ Result: Automatic backoff respects rate limits
 ## Testing
 
 ### Test Transient Failure
+
 ```bash
 # Kill a pod mid-request
 kubectl delete pod -l app=order-service -n demo-micro &
@@ -237,6 +254,7 @@ curl -X POST http://localhost:8080/query \
 ```
 
 ### Test Exponential Backoff
+
 ```bash
 # Monitor timing
 time curl -X POST http://localhost:8080/query \
@@ -251,6 +269,7 @@ time curl -X POST http://localhost:8080/query \
 ```
 
 ### Simulate Retry Metrics
+
 ```bash
 # Send 100 requests
 for i in {1..100}; do
@@ -266,6 +285,7 @@ curl http://localhost:8080/health/retries | jq '.retry_metrics["api-gateway"]'
 ## Troubleshooting
 
 ### High Retry Rate
+
 ```bash
 # Check average retries per operation
 curl http://localhost:8080/health/retries | jq '.retry_metrics["api-gateway"].avg_retries_per_op'
@@ -277,6 +297,7 @@ curl http://localhost:8080/health/retries | jq '.retry_metrics["api-gateway"].av
 ```
 
 ### Low Success Rate
+
 ```bash
 # Check success rate
 curl http://localhost:8080/health/retries | jq '.retry_metrics["api-gateway"].success_rate'
@@ -288,6 +309,7 @@ curl http://localhost:8080/health/retries | jq '.retry_metrics["api-gateway"].su
 ```
 
 ### Thundering Herd Detection
+
 ```bash
 # Check if requests are synchronized
 kubectl logs -f -l app=order-service | grep "Request received" | awk '{print $1}' | uniq -c
@@ -299,14 +321,14 @@ kubectl logs -f -l app=order-service | grep "Request received" | awk '{print $1}
 
 ## Benefits Summary
 
-| Benefit | Description | Impact |
-|---------|-------------|--------|
-| **Resilience** | Recover from transient failures | 96%+ success rate |
-| **User Experience** | Transparent recovery | No error messages |
-| **Service Protection** | Exponential backoff | No overwhelming |
-| **Load Distribution** | Jitter prevents sync | No thundering herd |
-| **Observability** | Metrics tracking | Understand patterns |
-| **Cost Reduction** | Fewer manual interventions | Save ops time |
+| Benefit                | Description                     | Impact              |
+| ---------------------- | ------------------------------- | ------------------- |
+| **Resilience**         | Recover from transient failures | 96%+ success rate   |
+| **User Experience**    | Transparent recovery            | No error messages   |
+| **Service Protection** | Exponential backoff             | No overwhelming     |
+| **Load Distribution**  | Jitter prevents sync            | No thundering herd  |
+| **Observability**      | Metrics tracking                | Understand patterns |
+| **Cost Reduction**     | Fewer manual interventions      | Save ops time       |
 
 ## Quick Commands
 

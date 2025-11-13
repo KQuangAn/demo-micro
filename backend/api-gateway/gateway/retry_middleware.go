@@ -16,7 +16,7 @@ import (
 func RetryMiddleware(next http.Handler, retry *redis.Retry, logger log.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		
+
 		// Read request body (we need to replay it on retry)
 		var bodyBytes []byte
 		var err error
@@ -28,45 +28,45 @@ func RetryMiddleware(next http.Handler, retry *redis.Retry, logger log.Logger) h
 			}
 			r.Body.Close()
 		}
-		
+
 		// Execute request with retry logic
 		var finalRecorder *retryResponseRecorder
-		
+
 		err = retry.Execute(ctx, func(attempt int) error {
 			// Restore request body for each attempt
 			if len(bodyBytes) > 0 {
 				r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 			}
-			
+
 			// Create response recorder to capture the response
 			recorder := &retryResponseRecorder{
 				statusCode: http.StatusOK,
 				headers:    make(http.Header),
 				body:       new(bytes.Buffer),
 			}
-			
+
 			// Add retry attempt header
 			r.Header.Set("X-Retry-Attempt", fmt.Sprintf("%d", attempt))
-			
+
 			// Call the next handler
 			next.ServeHTTP(recorder, r)
-			
+
 			// Store the recorder for final response
 			finalRecorder = recorder
-			
+
 			// Check if we should retry based on status code
 			if recorder.statusCode >= 500 && recorder.statusCode < 600 {
 				return fmt.Errorf("server error: %d", recorder.statusCode)
 			}
-			
+
 			// Check specific retryable status codes
 			if isRetryableStatusCode(recorder.statusCode) {
 				return fmt.Errorf("retryable error: %d", recorder.statusCode)
 			}
-			
+
 			return nil
 		})
-		
+
 		// Write the final response
 		if finalRecorder != nil {
 			// Copy headers
@@ -75,14 +75,14 @@ func RetryMiddleware(next http.Handler, retry *redis.Retry, logger log.Logger) h
 					w.Header().Add(key, value)
 				}
 			}
-			
+
 			// Add retry result header
 			if err != nil {
 				w.Header().Set("X-Retry-Result", "failed")
 			} else {
 				w.Header().Set("X-Retry-Result", "success")
 			}
-			
+
 			// Write status and body
 			w.WriteHeader(finalRecorder.statusCode)
 			w.Write(finalRecorder.body.Bytes())
@@ -90,7 +90,7 @@ func RetryMiddleware(next http.Handler, retry *redis.Retry, logger log.Logger) h
 			// Fallback if no recorder (shouldn't happen)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 		}
-		
+
 		if err != nil && err != redis.ErrMaxRetriesExceeded {
 			logger.Error("Retry middleware error", log.Error(err))
 		}
@@ -126,19 +126,19 @@ func (r *retryResponseRecorder) WriteHeader(statusCode int) {
 // isRetryableStatusCode checks if a status code should trigger retry
 func isRetryableStatusCode(statusCode int) bool {
 	retryable := []int{
-		http.StatusBadGateway,           // 502
-		http.StatusServiceUnavailable,   // 503
-		http.StatusGatewayTimeout,       // 504
-		http.StatusRequestTimeout,       // 408
-		429,                              // Too Many Requests (rate limit)
+		http.StatusBadGateway,         // 502
+		http.StatusServiceUnavailable, // 503
+		http.StatusGatewayTimeout,     // 504
+		http.StatusRequestTimeout,     // 408
+		429,                           // Too Many Requests (rate limit)
 	}
-	
+
 	for _, code := range retryable {
 		if statusCode == code {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -147,12 +147,12 @@ func RetryHealthHandler(retryManager *redis.RetryManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
-		
+
 		metrics := retryManager.GetAllMetrics(ctx)
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		
+
 		// Simple JSON marshaling
 		w.Write([]byte(`{"retry_metrics":`))
 		writeJSON(w, metrics)
@@ -197,7 +197,7 @@ func CombinedRetryCircuitBreakerMiddleware(
 ) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		
+
 		// Read request body (we need to replay it on retry)
 		var bodyBytes []byte
 		var err error
@@ -209,42 +209,42 @@ func CombinedRetryCircuitBreakerMiddleware(
 			}
 			r.Body.Close()
 		}
-		
+
 		var finalRecorder *retryResponseRecorder
-		
+
 		// Retry wrapper around circuit breaker
 		err = retry.ExecuteWithCondition(ctx, func(attempt int) error {
 			// Restore request body for each attempt
 			if len(bodyBytes) > 0 {
 				r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 			}
-			
+
 			// Circuit breaker execution
 			return breaker.Execute(ctx, func() error {
 				// Restore body again for circuit breaker retry
 				if len(bodyBytes) > 0 {
 					r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 				}
-				
+
 				recorder := &retryResponseRecorder{
 					statusCode: http.StatusOK,
 					headers:    make(http.Header),
 					body:       new(bytes.Buffer),
 				}
-				
+
 				// Add attempt headers
 				r.Header.Set("X-Retry-Attempt", fmt.Sprintf("%d", attempt))
-				
+
 				// Call the actual handler
 				next.ServeHTTP(recorder, r)
-				
+
 				finalRecorder = recorder
-				
+
 				// Treat 5xx as failure for both retry and circuit breaker
 				if recorder.statusCode >= 500 {
 					return fmt.Errorf("upstream service error: %d", recorder.statusCode)
 				}
-				
+
 				return nil
 			})
 		}, func(err error, attempt int) bool {
@@ -256,7 +256,7 @@ func CombinedRetryCircuitBreakerMiddleware(
 			}
 			return true // Retry other errors
 		})
-		
+
 		// Write final response
 		if finalRecorder != nil {
 			for key, values := range finalRecorder.headers {
@@ -264,7 +264,7 @@ func CombinedRetryCircuitBreakerMiddleware(
 					w.Header().Add(key, value)
 				}
 			}
-			
+
 			if err != nil {
 				w.Header().Set("X-Retry-Result", "failed")
 				if err == redis.ErrCircuitOpen {
@@ -273,7 +273,7 @@ func CombinedRetryCircuitBreakerMiddleware(
 			} else {
 				w.Header().Set("X-Retry-Result", "success")
 			}
-			
+
 			w.WriteHeader(finalRecorder.statusCode)
 			w.Write(finalRecorder.body.Bytes())
 		} else {

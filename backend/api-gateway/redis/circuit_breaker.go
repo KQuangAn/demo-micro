@@ -15,8 +15,8 @@ import (
 type CircuitState string
 
 const (
-	StateClosed   CircuitState = "closed"   // Normal operation, requests pass through
-	StateOpen     CircuitState = "open"     // Circuit is open, requests fail fast
+	StateClosed   CircuitState = "closed"    // Normal operation, requests pass through
+	StateOpen     CircuitState = "open"      // Circuit is open, requests fail fast
 	StateHalfOpen CircuitState = "half-open" // Testing if service recovered
 )
 
@@ -39,16 +39,16 @@ var (
 type CircuitBreakerConfig struct {
 	// MaxFailures is the number of consecutive failures before opening circuit
 	MaxFailures uint32
-	
+
 	// Timeout is how long to wait before attempting to close an open circuit
 	Timeout time.Duration
-	
+
 	// MaxRequests is max concurrent requests allowed in half-open state
 	MaxRequests uint32
-	
+
 	// ResetTimeout is how long to keep failure count before resetting
 	ResetTimeout time.Duration
-	
+
 	// FailureThreshold is the percentage of failures to trigger open state (0-100)
 	FailureThreshold float64
 }
@@ -70,12 +70,12 @@ type CircuitBreaker struct {
 	config CircuitBreakerConfig
 	client *redis.Client
 	logger log.Logger
-	
+
 	// In-memory cache to reduce Redis calls
-	mu           sync.RWMutex
-	cachedState  CircuitState
+	mu             sync.RWMutex
+	cachedState    CircuitState
 	lastStateCheck time.Time
-	stateCheckTTL time.Duration
+	stateCheckTTL  time.Duration
 }
 
 // NewCircuitBreaker creates a new circuit breaker
@@ -98,7 +98,7 @@ func (cb *CircuitBreaker) Execute(ctx context.Context, fn func() error) error {
 		// Fail open - allow request if Redis is down
 		return fn()
 	}
-	
+
 	switch state {
 	case StateOpen:
 		// Check if timeout has passed to transition to half-open
@@ -110,13 +110,13 @@ func (cb *CircuitBreaker) Execute(ctx context.Context, fn func() error) error {
 			return cb.executeHalfOpen(ctx, fn)
 		}
 		return ErrCircuitOpen
-		
+
 	case StateHalfOpen:
 		return cb.executeHalfOpen(ctx, fn)
-		
+
 	case StateClosed:
 		return cb.executeClosed(ctx, fn)
-		
+
 	default:
 		// Unknown state, default to closed
 		return cb.executeClosed(ctx, fn)
@@ -126,10 +126,10 @@ func (cb *CircuitBreaker) Execute(ctx context.Context, fn func() error) error {
 // executeClosed handles execution when circuit is closed
 func (cb *CircuitBreaker) executeClosed(ctx context.Context, fn func() error) error {
 	err := fn()
-	
+
 	if err != nil {
 		cb.recordFailure(ctx)
-		
+
 		// Check if we should open the circuit
 		failures, _ := cb.GetFailureCount(ctx)
 		if failures >= cb.config.MaxFailures {
@@ -141,7 +141,7 @@ func (cb *CircuitBreaker) executeClosed(ctx context.Context, fn func() error) er
 		}
 		return err
 	}
-	
+
 	// Success - reset failure count
 	cb.resetFailures(ctx)
 	return nil
@@ -154,9 +154,9 @@ func (cb *CircuitBreaker) executeHalfOpen(ctx context.Context, fn func() error) 
 	if successCount >= cb.config.MaxRequests {
 		return ErrTooManyRequests
 	}
-	
+
 	err := fn()
-	
+
 	if err != nil {
 		// Failure in half-open state - reopen circuit
 		cb.logger.Warn(fmt.Sprintf("Circuit breaker %s reopening after failure in half-open state", cb.name))
@@ -165,10 +165,10 @@ func (cb *CircuitBreaker) executeHalfOpen(ctx context.Context, fn func() error) 
 		cb.setOpenedAt(ctx, time.Now())
 		return err
 	}
-	
+
 	// Success - increment success count
 	cb.incrementSuccess(ctx)
-	
+
 	// Check if we have enough successful requests to close circuit
 	successCount, _ = cb.GetSuccessCount(ctx)
 	if successCount >= cb.config.MaxRequests {
@@ -177,7 +177,7 @@ func (cb *CircuitBreaker) executeHalfOpen(ctx context.Context, fn func() error) 
 		cb.resetFailures(ctx)
 		cb.resetSuccess(ctx)
 	}
-	
+
 	return nil
 }
 
@@ -191,7 +191,7 @@ func (cb *CircuitBreaker) GetState(ctx context.Context) (CircuitState, error) {
 		return state, nil
 	}
 	cb.mu.RUnlock()
-	
+
 	// Fetch from Redis
 	key := cb.stateKey()
 	val, err := cb.client.Get(ctx, key).Result()
@@ -202,15 +202,15 @@ func (cb *CircuitBreaker) GetState(ctx context.Context) (CircuitState, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	state := CircuitState(val)
-	
+
 	// Update cache
 	cb.mu.Lock()
 	cb.cachedState = state
 	cb.lastStateCheck = time.Now()
 	cb.mu.Unlock()
-	
+
 	return state, nil
 }
 
@@ -221,13 +221,13 @@ func (cb *CircuitBreaker) SetState(ctx context.Context, state CircuitState) erro
 	if err != nil {
 		return err
 	}
-	
+
 	// Update cache
 	cb.mu.Lock()
 	cb.cachedState = state
 	cb.lastStateCheck = time.Now()
 	cb.mu.Unlock()
-	
+
 	return nil
 }
 
@@ -263,11 +263,11 @@ func (cb *CircuitBreaker) recordFailure(ctx context.Context) {
 	pipe := cb.client.Pipeline()
 	pipe.Incr(ctx, key)
 	pipe.Expire(ctx, key, cb.config.ResetTimeout)
-	
+
 	// Record last failure time
 	lastFailKey := cb.lastFailureKey()
 	pipe.Set(ctx, lastFailKey, time.Now().Unix(), cb.config.ResetTimeout)
-	
+
 	if _, err := pipe.Exec(ctx); err != nil {
 		cb.logger.Error("Failed to record failure", log.Error(err))
 	}
@@ -290,7 +290,7 @@ func (cb *CircuitBreaker) incrementSuccess(ctx context.Context) {
 	pipe := cb.client.Pipeline()
 	pipe.Incr(ctx, key)
 	pipe.Expire(ctx, key, cb.config.Timeout)
-	
+
 	if _, err := pipe.Exec(ctx); err != nil {
 		cb.logger.Error("Failed to increment success", log.Error(err))
 	}
@@ -311,7 +311,7 @@ func (cb *CircuitBreaker) shouldAttemptReset(ctx context.Context) bool {
 	if err != nil {
 		return true // If we can't get the time, allow attempt
 	}
-	
+
 	openedAt := time.Unix(val, 0)
 	return time.Since(openedAt) >= cb.config.Timeout
 }
@@ -329,16 +329,16 @@ func (cb *CircuitBreaker) GetMetrics(ctx context.Context) (map[string]interface{
 	state, _ := cb.GetState(ctx)
 	failures, _ := cb.GetFailureCount(ctx)
 	success, _ := cb.GetSuccessCount(ctx)
-	
+
 	metrics := map[string]interface{}{
-		"name":           cb.name,
-		"state":          string(state),
-		"failure_count":  failures,
-		"success_count":  success,
-		"max_failures":   cb.config.MaxFailures,
-		"timeout_sec":    cb.config.Timeout.Seconds(),
+		"name":          cb.name,
+		"state":         string(state),
+		"failure_count": failures,
+		"success_count": success,
+		"max_failures":  cb.config.MaxFailures,
+		"timeout_sec":   cb.config.Timeout.Seconds(),
 	}
-	
+
 	// Add opened_at if circuit is open
 	if state == StateOpen || state == StateHalfOpen {
 		key := cb.openedAtKey()
@@ -346,7 +346,7 @@ func (cb *CircuitBreaker) GetMetrics(ctx context.Context) (map[string]interface{
 			metrics["opened_at"] = time.Unix(val, 0).Format(time.RFC3339)
 		}
 	}
-	
+
 	return metrics, nil
 }
 
@@ -354,12 +354,12 @@ func (cb *CircuitBreaker) GetMetrics(ctx context.Context) (map[string]interface{
 func (cb *CircuitBreaker) Reset(ctx context.Context) error {
 	cb.resetFailures(ctx)
 	cb.resetSuccess(ctx)
-	
+
 	// Delete opened_at
 	if err := cb.client.Del(ctx, cb.openedAtKey()).Err(); err != nil {
 		cb.logger.Error("Failed to delete opened_at", log.Error(err))
 	}
-	
+
 	return cb.SetState(ctx, StateClosed)
 }
 

@@ -124,7 +124,7 @@ func (d *DatasourcePollerPoller) updateSDLs(ctx context.Context) {
 			// Get or create circuit breaker for this service
 			var breaker *redis.CircuitBreaker
 			var retry *redis.Retry
-			
+
 			if d.cbManager != nil {
 				subgraphConfig := redis.CircuitBreakerConfig{
 					MaxFailures:      3,                // More sensitive for subgraphs
@@ -135,14 +135,14 @@ func (d *DatasourcePollerPoller) updateSDLs(ctx context.Context) {
 				}
 				breaker = d.cbManager.GetOrCreateBreaker("subgraph-"+serviceConf.Name, subgraphConfig)
 			}
-			
+
 			if d.retryManager != nil {
 				subgraphRetryConfig := redis.RetryConfig{
-					MaxAttempts:    2,                      // 2 retries for schema fetching
-					InitialDelay:   50 * time.Millisecond,  // Start with 50ms
-					MaxDelay:       1 * time.Second,        // Cap at 1 second
-					Multiplier:     2.0,                    // Double delay
-					Jitter:         0.1,                    // 10% jitter
+					MaxAttempts:    2,                     // 2 retries for schema fetching
+					InitialDelay:   50 * time.Millisecond, // Start with 50ms
+					MaxDelay:       1 * time.Second,       // Cap at 1 second
+					Multiplier:     2.0,                   // Double delay
+					Jitter:         0.1,                   // 10% jitter
 					RetryOnTimeout: true,
 					RetryOn5xx:     true,
 				}
@@ -168,7 +168,7 @@ func (d *DatasourcePollerPoller) updateSDLs(ctx context.Context) {
 			// Cache miss - fetch from service with retry + circuit breaker protection
 			var sdl string
 			var err error
-			
+
 			// Wrap everything in retry logic
 			if retry != nil {
 				fetchErr := retry.ExecuteWithCondition(ctx, func(attempt int) error {
@@ -183,7 +183,7 @@ func (d *DatasourcePollerPoller) updateSDLs(ctx context.Context) {
 							return nil
 						})
 					}
-					
+
 					// No circuit breaker, just fetch
 					fetchedSDL, fetchErr := d.fetchServiceSDL(ctx, serviceConf.SchemaURL, serviceConf.Method, serviceConf.ResponseType)
 					if fetchErr != nil {
@@ -199,7 +199,7 @@ func (d *DatasourcePollerPoller) updateSDLs(ctx context.Context) {
 					}
 					return true
 				})
-				
+
 				if fetchErr != nil {
 					err = fetchErr
 				}
@@ -213,7 +213,7 @@ func (d *DatasourcePollerPoller) updateSDLs(ctx context.Context) {
 					sdl = fetchedSDL
 					return nil
 				})
-				
+
 				if fetchErr != nil {
 					if fetchErr == redis.ErrCircuitOpen {
 						log.Printf("Circuit breaker OPEN for service %s - using fallback", serviceConf.Name)
@@ -224,7 +224,7 @@ func (d *DatasourcePollerPoller) updateSDLs(ctx context.Context) {
 				// No retry, no circuit breaker
 				sdl, err = d.fetchServiceSDL(ctx, serviceConf.SchemaURL, serviceConf.Method, serviceConf.ResponseType)
 			}
-			
+
 			if err != nil {
 				log.Println("Failed to get sdl.", err)
 

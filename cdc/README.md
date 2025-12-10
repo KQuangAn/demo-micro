@@ -15,7 +15,9 @@ This project demonstrates a simple Change Data Capture (CDC) setup using Postgre
     docker-compose up -d
     ```
 
-    This starts Postgres, Zookeeper, Kafka, and Debezium Connect.
+This starts Postgres, Zookeeper, Kafka, and Debezium Connect. Postgres is now configured with `POSTGRES_HOST_AUTH_METHOD=md5`, which creates a host rule that allows connections from your host machine (or any external client) as long as the correct password is supplied.
+
+> **Note:** If you previously started the stack without this setting, stop it with `docker-compose down -v` to remove the old Postgres volume, then bring it up again so the new authentication rule is applied.
 
 2.  **Register the Debezium Connector:**
 
@@ -63,3 +65,7 @@ You should see JSON messages representing the changes in the `users` table, matc
 ```bash
 docker-compose down -v
 ```
+
+## Troubleshooting
+
+- **`no pg_hba.conf entry` errors**: Ensure the stack was recreated after adding `POSTGRES_HOST_AUTH_METHOD=md5` (see the note in step 1). Running `docker-compose down -v && docker-compose up -d` refreshes the Postgres data directory with the correct host authentication rule.

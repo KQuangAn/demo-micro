@@ -61,3 +61,28 @@ services:
       - kafka-1
       - kafka-2
       - kafka-3
+  postgres:
+    image: postgres:14-alpine
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_HOST_AUTH_METHOD=md5
+    command: ['postgres', '-c', 'wal_level=logical']
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  connect:
+    image: debezium/connect:2.4
+    ports:
+      - '8083:8083'
+    environment:
+      - BOOTSTRAP_SERVERS=kafka-1:29092,kafka-2:29093,kafka-3:29094
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my_connect_configs
+      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - STATUS_STORAGE_TOPIC=my_connect_statuses
+    depends_on:
+      - kafdrop
+      - postgres

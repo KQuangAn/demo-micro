@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"os"
 	"os/signal"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/demo-micro/backend/kafka-go/internal/providers/kafka"
 	"github.com/demo-micro/backend/kafka-go/pkg/queue"
+	_ "github.com/lib/pq"
 )
 
 var (
@@ -33,6 +35,31 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
+func connectDb() (*sql.DB, error) {
+	pb, err := sql.Open("postgres", "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable")
+	if err != nil {
+		return nil, err
+	}
+	defer pb.Close()
+
+	err = pb.Ping()
+	if err != nil {
+		return nil, err
+	}
+
+	return pb, nil
+}
+
+func seed(db *sql.DB) error {
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS users (
+		id SERIAL PRIMARY KEY,
+		name TEXT,
+		email TEXT,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	)`)
+	return err
+}
+
 func main() {
 	// Create context with cancellation for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
@@ -48,13 +75,24 @@ func main() {
 		cancel()
 	}()
 
+	db, err := connectDb()
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	err = seed(db)
+	if err != nil {
+		log.Fatalf("Failed to seed database: %v", err)
+	}
+
 	// Get configuration from environment
 	topic := getEnv(envTopic, "my-topic")
 	groupID := getEnv(envGroupID, "my-group")
 
 	// Create topic if it doesn't exist
 	log.Println("Ensuring topic exists...")
-	err := kafka.CreateTopic(ctx, BootstrapServers, kafka.TopicConfig{
+	err = kafka.CreateTopic(ctx, BootstrapServers, kafka.TopicConfig{
 		Topic:             topic,
 		NumPartitions:     3,
 		ReplicationFactor: 3,
@@ -92,6 +130,23 @@ func main() {
 	if err := eventQueue.Publish(publishCtx, messages); err != nil {
 		log.Printf("Failed to publish messages: %v", err)
 	}
+
+	// periodically add data to table
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				db.Exec("INSERT INTO users (name, email) VALUES ($1, $2)", "Kafka User", "kafka@example.com")
+
+				log.Println("Adding data to PostgreSQL table...")
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 
 	// Subscribe to messages in a goroutine
 	go func() {

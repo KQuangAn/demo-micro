@@ -47,5 +47,14 @@ services:
       - kafka
       - postgres
 
+  kafdrop:
+    image: obsidiandynamics/kafdrop:4.2.0
+    ports:
+      - '9000:9000'
+    environment:
+      KAFKA_BROKER_CONNECT: kafka:29092
+    depends_on:
+      - kafka
+
 volumes:
   postgres_data:

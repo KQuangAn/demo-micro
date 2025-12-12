@@ -1,13 +1,16 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 app = FastAPI()
 
 class Item(BaseModel):
     name: str
+    email: EmailStr| None = Field(default=None)
     new : bool = True
 
 item :list[Item]= []
-
+ 
+async def lifespan(app):
+    yield
 
 
 @app.get("/")

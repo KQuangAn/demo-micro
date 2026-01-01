@@ -1,0 +1,77 @@
+[
+  {
+    "date": "2024-12-27",
+    "title": "Hanoi Weather Forecast - December 27, 2024",
+    "content": "Today in Hanoi, expect partly cloudy skies with temperatures ranging from 18°C to 24°C. Light winds from the northeast at 10-15 km/h. Humidity levels around 75%. There's a 20% chance of light rain in the afternoon. Overall, pleasant weather conditions for outdoor activities.",
+    "location": "Hanoi, Vietnam",
+    "period": "Today"
+  },
+  {
+    "date": "2024-12-28",
+    "title": "Hanoi Weather Forecast - December 28, 2024",
+    "content": "Tomorrow in Hanoi will see mostly sunny conditions with temperatures between 19°C and 25°C. Gentle breeze from the east at 8-12 km/h. Humidity around 70%. No precipitation expected. Perfect weather for sightseeing and exploring the city.",
+    "location": "Hanoi, Vietnam",
+    "period": "Tomorrow"
+  },
+  {
+    "date": "2024-12-29",
+    "title": "Hanoi Weather Forecast - December 29, 2024",
+    "content": "Hanoi weather on December 29: Overcast skies with temperatures from 17°C to 23°C. Moderate winds from the north at 15-20 km/h. Humidity levels at 80%. There's a 40% chance of light to moderate rain throughout the day. Bring an umbrella if going outdoors.",
+    "location": "Hanoi, Vietnam",
+    "period": "December 29"
+  },
+  {
+    "date": "2024-12-30",
+    "title": "Hanoi Weather Forecast - December 30, 2024",
+    "content": "December 30 forecast for Hanoi: Clear skies with temperatures ranging from 20°C to 26°C. Light winds from the southeast at 5-10 km/h. Low humidity at 65%. Sunny and warm conditions ideal for outdoor activities and festivals.",
+    "location": "Hanoi, Vietnam",
+    "period": "December 30"
+  },
+  {
+    "date": "2024-12-31",
+    "title": "Hanoi Weather Forecast - New Year's Eve 2024",
+    "content": "New Year's Eve in Hanoi: Partly cloudy with temperatures between 19°C and 25°C. Calm winds from the south at 5-8 km/h. Humidity around 72%. Slight chance (15%) of evening drizzle. Good conditions for New Year celebrations and fireworks viewing.",
+    "location": "Hanoi, Vietnam",
+    "period": "New Year's Eve"
+  },
+  {
+    "date": "2025-01-01",
+    "title": "Hanoi Weather Forecast - New Year's Day 2025",
+    "content": "New Year's Day weather in Hanoi: Sunny and clear with temperatures from 21°C to 27°C. Light breeze from the southwest at 8-12 km/h. Comfortable humidity at 68%. Perfect weather to start the new year with outdoor activities and family gatherings.",
+    "location": "Hanoi, Vietnam",
+    "period": "New Year's Day"
+  },
+  {
+    "date": "2025-01-02",
+    "title": "Hanoi Weather Forecast - January 2, 2025",
+    "content": "January 2 forecast for Hanoi: Cloudy skies with temperatures ranging from 18°C to 24°C. Moderate winds from the north at 12-18 km/h. High humidity at 82%. Expect light rain in the morning with a 50% chance of precipitation. Cooler conditions expected.",
+    "location": "Hanoi, Vietnam",
+    "period": "January 2"
+  },
+  {
+    "date": "2025-01-03",
+    "title": "Hanoi Weather Forecast - January 3, 2025",
+    "content": "Hanoi weather on January 3: Partly sunny with temperatures between 19°C and 25°C. Gentle winds from the east at 10-15 km/h. Humidity levels around 75%. Occasional clouds but generally pleasant weather. Good conditions for visiting historical sites.",
+    "location": "Hanoi, Vietnam",
+    "period": "January 3"
+  },
+  {
+    "title": "Hanoi Climate Overview",
+    "content": "Hanoi experiences a humid subtropical climate with four distinct seasons. Winter (December-February) is cool and dry with average temperatures of 15-20°C. Spring (March-May) is warm and humid. Summer (June-August) is hot and rainy with temperatures reaching 30-35°C. Autumn (September-November) is mild and pleasant. The city receives most of its rainfall during the summer monsoon season from May to September.",
+    "location": "Hanoi, Vietnam",
+    "period": "General Climate"
+  },
+  {
+    "title": "Best Time to Visit Hanoi",
+    "content": "The best time to visit Hanoi is during autumn (September to November) and spring (March to April) when the weather is most pleasant. Temperatures are mild, ranging from 20°C to 28°C, with lower humidity and minimal rainfall. These seasons offer ideal conditions for exploring the city's attractions, street food, and cultural sites without the extreme heat or cold.",
+    "location": "Hanoi, Vietnam",
+    "period": "Travel Guide"
+  },
+  {
+    "title": "Hanoi Weather Patterns",
+    "content": "Hanoi's weather is influenced by the monsoon climate. The northeast monsoon brings cool, dry weather from November to March. The southwest monsoon brings hot, humid weather with heavy rains from May to September. Transition months (April and October) experience variable weather. The city averages 1,680mm of rainfall annually, with the wettest months being July and August.",
+    "location": "Hanoi, Vietnam",
+    "period": "Weather Patterns"
+  }
+]
+

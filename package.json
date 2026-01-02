@@ -30,5 +30,8 @@
     "extends": [
       "@commitlint/config-conventional"
     ]
+  },
+  "dependencies": {
+    "serverless-offline": "^14.4.0"
   }
 }

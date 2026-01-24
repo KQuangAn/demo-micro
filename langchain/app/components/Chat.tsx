@@ -26,6 +26,7 @@ export default function Chat() {
   const [useRAG, setUseRAG] = useState<boolean>(false);
   const [showModels, setShowModels] = useState(false);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [sessionId] = useState<string>(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -140,6 +141,7 @@ export default function Chat() {
           })),
           model: selectedModel,
           useRAG: useRAG,
+          sessionId: sessionId,
         }),
       });
 

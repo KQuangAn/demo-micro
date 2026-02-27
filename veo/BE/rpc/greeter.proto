@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+option go_package = "./greeter";
+
+package greeter;
+
+service Greeter {
+    rpc Chat(stream Message) returns (stream Message);
+}
+
+message Message {
+    string body = 1;
+}

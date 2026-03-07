@@ -34,3 +34,8 @@ def get_all_items(limit: int = 10, offset: int = 0):
     if offset < len(item):
         return {"items": item[offset : offset + limit]}
     raise HTTPException(status_code=404, detail="Item not found")
+
+    
+@app.get("/token/")
+def get_token(response: Response):
+    return response.token()

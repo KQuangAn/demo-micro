@@ -1,0 +1,6 @@
+chat_service_root: "c:/Users/khuat/Desktop/micro/backend/chat-service"
+chat_redis_container_name: "chat-service-redis-1"
+chat_kafka_container_name: "chat-service-kafka-1"
+chat_redis_channel: "chat:server"
+chat_kafka_topic: "messages"
+chat_seed_file: "{{ playbook_dir }}/seed-data/chat-seed.json"

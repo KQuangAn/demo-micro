@@ -1,0 +1,81 @@
+---
+- name: Seed chat-service backing brokers with sample chat messages
+  hosts: local
+  gather_facts: false
+  vars:
+    seed_messages: "{{ lookup('file', chat_seed_file) | from_json }}"
+
+  tasks:
+    - name: Verify chat-service compose directory exists
+      ansible.builtin.stat:
+        path: "{{ chat_service_root }}"
+      register: chat_service_root_stat
+
+    - name: Abort when chat-service root does not exist
+      ansible.builtin.fail:
+        msg: "chat-service root '{{ chat_service_root }}' was not found"
+      when: not chat_service_root_stat.stat.exists
+
+    - name: Check redis container availability
+      ansible.builtin.command:
+        cmd: docker ps --filter name={{ chat_redis_container_name }} --format {{ '{{.Names}}' }}
+      register: redis_container_check
+      changed_when: false
+
+    - name: Check kafka container availability
+      ansible.builtin.command:
+        cmd: docker ps --filter name={{ chat_kafka_container_name }} --format {{ '{{.Names}}' }}
+      register: kafka_container_check
+      changed_when: false
+
+    - name: Abort when redis container is not running
+      ansible.builtin.fail:
+        msg: "Redis container '{{ chat_redis_container_name }}' is not running. Start the chat-service docker compose stack first."
+      when: redis_container_check.stdout | trim == ''
+
+    - name: Abort when kafka container is not running
+      ansible.builtin.fail:
+        msg: "Kafka container '{{ chat_kafka_container_name }}' is not running. Start the chat-service docker compose stack first."
+      when: kafka_container_check.stdout | trim == ''
+
+    - name: Publish seeded messages to Redis server channel
+      ansible.builtin.command:
+        argv:
+          - docker
+          - exec
+          - "{{ chat_redis_container_name }}"
+          - redis-cli
+          - PUBLISH
+          - "{{ chat_redis_channel }}"
+          - "{{ item | to_json }}"
+      loop: "{{ seed_messages }}"
+      loop_control:
+        label: "{{ item.id }}"
+      register: redis_publish_results
+
+    - name: Produce seeded messages to Kafka topic
+      ansible.builtin.command:
+        argv:
+          - docker
+          - exec
+          - -i
+          - "{{ chat_kafka_container_name }}"
+          - kafka-console-producer
+          - --bootstrap-server
+          - kafka:29092
+          - --topic
+          - "{{ chat_kafka_topic }}"
+      args:
+        stdin: "{{ item | to_json }}\n"
+      loop: "{{ seed_messages }}"
+      loop_control:
+        label: "{{ item.id }}"
+      register: kafka_produce_results
+
+    - name: Show seed summary
+      ansible.builtin.debug:
+        msg:
+          redis_published: "{{ redis_publish_results.results | length }}"
+          kafka_produced: "{{ kafka_produce_results.results | length }}"
+          topic: "{{ chat_kafka_topic }}"
+          channel: "{{ chat_redis_channel }}"

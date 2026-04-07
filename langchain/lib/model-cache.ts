@@ -1,4 +1,4 @@
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { ChatGroq } from "@langchain/groq";
 
 // Model cache to reuse instances across requests
 interface ModelConfig {
@@ -10,7 +10,7 @@ interface ModelConfig {
 type ModelCacheKey = string;
 
 // Cache to store model instances
-const modelCache = new Map<ModelCacheKey, ChatGoogleGenerativeAI>();
+const modelCache = new Map<ModelCacheKey, ChatGroq>();
 
 /**
  * Generate a cache key from model configuration
@@ -20,18 +20,18 @@ function getCacheKey(config: ModelConfig): ModelCacheKey {
 }
 
 /**
- * Get or create a ChatGoogleGenerativeAI model instance
+ * Get or create a ChatGroq model instance
  * Reuses existing instances from cache to improve efficiency
  */
 export function getModel(
-  modelName: string = "gemini-1.5-pro",
+  modelName: string = "llama-3.1-8b-instant",
   temperature: number = 0.7,
   apiKey?: string
-): ChatGoogleGenerativeAI {
-  const finalApiKey = apiKey || process.env.GOOGLE_API_KEY;
+): ChatGroq {
+  const finalApiKey = apiKey || process.env.GROQ_API_KEY;
   
   if (!finalApiKey) {
-    throw new Error("GOOGLE_API_KEY is not set in environment variables");
+    throw new Error("GROQ_API_KEY is not set in environment variables");
   }
 
   const config: ModelConfig = {
@@ -48,7 +48,7 @@ export function getModel(
   }
 
   // Create new model instance and cache it
-  const model = new ChatGoogleGenerativeAI({
+  const model = new ChatGroq({
     model: modelName,
     temperature,
     apiKey: finalApiKey,
@@ -76,3 +76,6 @@ export function clearModelCache(): void {
 export function getCacheSize(): number {
   return modelCache.size;
 }
+
+/** Re-export the type so consumers can reference it */
+export type { ChatGroq };

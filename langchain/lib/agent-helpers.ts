@@ -1,5 +1,5 @@
 import { createAgent, tool } from "langchain";
-import type { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import type { ChatGroq } from "@langchain/groq";
 import { ToolRunnableConfig } from "@langchain/core/tools";
 import * as z from "zod";
 import { getChatHistorySummary } from "./chat-history";
@@ -31,7 +31,7 @@ export async function enhanceMessagesWithHistory(
   currentQuery: string,
   sessionId: string,
   modelName: string,
-  model: ChatGoogleGenerativeAI
+  model: ChatGroq
 ): Promise<Array<{ role: string; content: string }>> {
   // Get chat history summary
   const chatHistorySummary = await getChatHistorySummary(
@@ -80,7 +80,7 @@ export async function enhanceMessagesWithHistory(
  */
 export async function processAgentRequest(
   messages: Array<{ role: string; content: string }>,
-  model: ChatGoogleGenerativeAI,
+  model: ChatGroq,
   sessionId: string,
   modelName: string
 ): Promise<string> {
@@ -100,7 +100,7 @@ export async function processAgentRequest(
   );
 
   // Create agent with the model and tools
-  const agent = createAgent({
+  const agent = createReactA({
     model,
     tools: [getWeather],
   });

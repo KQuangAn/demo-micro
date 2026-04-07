@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { ChatGroq } from "@langchain/groq";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { RunnableSequence, RunnablePassthrough } from "@langchain/core/runnables";
 import { getVectorStore } from "@/lib/vector-store";
@@ -15,21 +15,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!process.env.GOOGLE_API_KEY) {
+    if (!process.env.GROQ_API_KEY) {
       return NextResponse.json(
-        { error: "GOOGLE_API_KEY is not set in environment variables" },
+        { error: "GROQ_API_KEY is not set in environment variables" },
         { status: 500 }
       );
     }
 
-    // Use provided model or default to gemini-1.5-pro
-    const selectedModel = modelName || "gemini-1.5-pro";
+    // Use provided model or default to llama-3.1-8b-instant
+    const selectedModel = modelName || "llama-3.1-8b-instant";
 
-    // Create Google Gemini model
-    const model = new ChatGoogleGenerativeAI({
+    // Create Groq model
+    const model = new ChatGroq({
       model: selectedModel,
       temperature: 0.7,
-      apiKey: process.env.GOOGLE_API_KEY,
+      apiKey: process.env.GROQ_API_KEY,
     });
 
     // Get vector store

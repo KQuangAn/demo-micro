@@ -14,7 +14,8 @@
     "test:ui": "vitest --ui",
     "eval:tools": "tsx tests/evals/tool-selection.eval.ts",
     "multi-agent": "tsx lib/multi-agent/demo.ts",
-    "simple-multi-agent": "tsx lib/multi-agent/simple-multi-agent.ts"
+    "simple-multi-agent": "tsx lib/multi-agent/simple-multi-agent.ts",
+    "custom-checkpoint": "tsx lib/multi-agent/custom-checkpoint.ts"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.3",

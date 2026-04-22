@@ -1,0 +1,74 @@
+description: |
+  Sequential Trip Planning Workflow.
+  Agents pass tasks in a pipeline: preferences → itinerary → hotels → food.
+  Each stage completes before the next begins, giving full context to every step.
+
+nodes:
+  - id: PIIValidatorBefore
+    type: MiddlewareNode
+    prompt: Validate and scrub PII (SSN, passport, credit card) from raw user input
+  - id: PreferenceAnalyzer
+    type: AgentNode
+    prompt: >
+      Extract structured user preferences: budget, trip length, travel style,
+      dietary restrictions, interests, and destinations. Compute a confidence
+      score (0–1) based on input completeness.
+  - id: ItineraryPlanner
+    type: AgentNode
+    prompt: >
+      Plan a day-by-day itinerary matched to trip length, interests, and
+      destination. Each day includes activities and location.
+  - id: HotelFinder
+    type: AgentNode
+    prompt: >
+      Find hotels within the user's per-night budget at the itinerary destination.
+      Return name, price, location, and rating.
+  - id: FoodRecommender
+    type: AgentNode
+    prompt: >
+      Recommend diverse restaurants and food experiences respecting dietary
+      restrictions. Cover multiple cuisines and price ranges.
+  - id: PostgresCheckpointer
+    type: MiddlewareNode
+    prompt: Persist current agent state to Postgres so the workflow can resume after interrupts
+  - id: ToolCallValidatorAfter
+    type: MiddlewareNode
+    prompt: Validate that itinerary, hotels, and food outputs are complete and coherent
+  - id: ToolRetryManager
+    type: MiddlewareNode
+    prompt: Schedule retries (up to 3) for any failed or incomplete tool calls
+  - id: TodoListManager
+    type: MiddlewareNode
+    prompt: Track pending planning steps and surface them for downstream nodes
+  - id: HumanInterruptManager
+    type: MiddlewareNode
+    prompt: >
+      Evaluate confidence score and risk signals. Escalate to human review if
+      confidence < humanReviewThreshold, budget is critically low, or unresolved
+      feedback exists.
+    humanReviewThreshold: 0.7
+  - id: HumanReviewNode
+    type: MiddlewareNode
+    prompt: >
+      Human-in-the-loop review gate. In production this pauses the graph and
+      awaits human feedback via LangGraph interrupt(). Stub accepts the plan
+      and injects a reviewer note.
+
+edges:
+  - [START, PIIValidatorBefore]
+  - [PIIValidatorBefore, PreferenceAnalyzer]
+  - [PreferenceAnalyzer, ItineraryPlanner]
+  - [ItineraryPlanner, HotelFinder]
+  - [HotelFinder, FoodRecommender]
+  - [FoodRecommender, PostgresCheckpointer]
+  - [PostgresCheckpointer, ToolCallValidatorAfter]
+  - [ToolCallValidatorAfter, ToolRetryManager]
+  - [ToolRetryManager, TodoListManager]
+  - [TodoListManager, HumanInterruptManager]
+  - [HumanReviewNode, END]
+
+conditionalEdges:
+  - startNode: HumanInterruptManager
+    route:
+      humanReview: HumanReviewNode
+      done: END

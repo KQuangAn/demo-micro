@@ -1,0 +1,85 @@
+description: |
+  Subagents-as-Tools Trip Planning Workflow.
+  A main Planner agent invokes ItineraryPlanner, HotelFinder, FoodRecommender,
+  and PreferenceAnalyzer as callable tools when needed, rather than as fixed
+  pipeline stages. ToolCallValidatorBefore dispatches to the appropriate
+  subagent conditionally based on what data is still missing.
+
+nodes:
+  - id: PIIValidatorBefore
+    type: MiddlewareNode
+    prompt: Validate and scrub PII from raw user input
+  - id: PreferenceAnalyzer
+    type: AgentNode
+    prompt: >
+      Extract structured user preferences: budget, trip length, travel style,
+      dietary restrictions, interests, and destinations. Compute a confidence
+      score (0–1) based on input completeness.
+  - id: Planner
+    type: AgentNode
+    prompt: >
+      Main orchestrator agent. Calls ItineraryPlanner, HotelFinder, and
+      FoodRecommender as sub-tools inline to build a complete trip plan.
+      Delegates to ToolCallValidatorBefore before each tool invocation.
+  - id: HotelFinder
+    type: AgentNode
+    prompt: >
+      Subagent tool: find hotels within budget at the itinerary destination.
+      Invoked by Planner when hotel data is missing from state.
+  - id: FoodRecommender
+    type: AgentNode
+    prompt: >
+      Subagent tool: recommend diverse food options respecting dietary
+      restrictions. Invoked by Planner when food data is missing from state.
+  - id: PostgresCheckpointer
+    type: MiddlewareNode
+    prompt: Persist current agent state to Postgres so the workflow can resume after interrupts
+  - id: ToolCallValidatorBefore
+    type: MiddlewareNode
+    prompt: >
+      Gate before each subagent tool call. Routes to HotelFinder if hotels are
+      missing, or to FoodRecommender if food options are missing.
+  - id: ToolCallValidatorAfter
+    type: MiddlewareNode
+    prompt: Validate that all subagent tool outputs are complete and coherent
+  - id: ToolRetryManager
+    type: MiddlewareNode
+    prompt: Schedule retries (up to 3) for any failed or incomplete tool calls
+  - id: TodoListManager
+    type: MiddlewareNode
+    prompt: Track pending planning steps and surface them for downstream nodes
+  - id: HumanInterruptManager
+    type: MiddlewareNode
+    prompt: >
+      Evaluate confidence score and risk signals. Escalate to human review if
+      confidence < humanReviewThreshold, budget is critically low, or unresolved
+      feedback exists.
+    humanReviewThreshold: 0.7
+  - id: HumanReviewNode
+    type: MiddlewareNode
+    prompt: >
+      Human-in-the-loop review gate. In production this pauses the graph and
+      awaits human feedback via LangGraph interrupt().
+
+edges:
+  - [START, PIIValidatorBefore]
+  - [PIIValidatorBefore, PreferenceAnalyzer]
+  - [PreferenceAnalyzer, Planner]
+  - [Planner, ToolCallValidatorBefore]
+  - [HotelFinder, ToolCallValidatorAfter]
+  - [FoodRecommender, ToolCallValidatorAfter]
+  - [ToolCallValidatorAfter, PostgresCheckpointer]
+  - [PostgresCheckpointer, ToolRetryManager]
+  - [ToolRetryManager, TodoListManager]
+  - [TodoListManager, HumanInterruptManager]
+  - [HumanReviewNode, END]
+
+conditionalEdges:
+  - startNode: ToolCallValidatorBefore
+    route:
+      hotelNeeded: HotelFinder
+      foodNeeded: FoodRecommender
+  - startNode: HumanInterruptManager
+    route:
+      humanReview: HumanReviewNode
+      done: END

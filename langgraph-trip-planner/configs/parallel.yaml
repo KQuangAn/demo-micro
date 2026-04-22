@@ -1,0 +1,81 @@
+description: |
+  Parallel Trip Planning Workflow.
+  ItineraryPlanner, HotelFinder, and FoodRecommender run simultaneously after
+  PreferenceAnalyzer. A ResultMerger coordinator combines their outputs.
+
+nodes:
+  - id: PIIValidatorBefore
+    type: MiddlewareNode
+    prompt: Validate and scrub PII from raw user input
+  - id: PreferenceAnalyzer
+    type: AgentNode
+    prompt: >
+      Extract structured user preferences: budget, trip length, travel style,
+      dietary restrictions, interests, and destinations. Compute a confidence
+      score (0–1) based on input completeness.
+  - id: ItineraryPlanner
+    type: AgentNode
+    prompt: >
+      Plan a day-by-day itinerary matched to trip length, interests, and
+      destination. Runs in parallel with HotelFinder and FoodRecommender.
+  - id: HotelFinder
+    type: AgentNode
+    prompt: >
+      Find hotels within the user's per-night budget. Runs in parallel with
+      ItineraryPlanner and FoodRecommender.
+  - id: FoodRecommender
+    type: AgentNode
+    prompt: >
+      Recommend diverse restaurants respecting dietary restrictions. Runs in
+      parallel with ItineraryPlanner and HotelFinder.
+  - id: ResultMerger
+    type: AgentNode
+    prompt: >
+      Coordinator agent: merge parallel outputs from ItineraryPlanner,
+      HotelFinder, and FoodRecommender into a coherent final plan.
+  - id: PostgresCheckpointer
+    type: MiddlewareNode
+    prompt: Persist current agent state to Postgres so the workflow can resume after interrupts
+  - id: ToolCallValidatorAfter
+    type: MiddlewareNode
+    prompt: Validate that all parallel outputs are complete and coherent
+  - id: ToolRetryManager
+    type: MiddlewareNode
+    prompt: Schedule retries for any failed or incomplete tool calls
+  - id: TodoListManager
+    type: MiddlewareNode
+    prompt: Track pending planning steps and surface them for downstream nodes
+  - id: HumanInterruptManager
+    type: MiddlewareNode
+    prompt: >
+      Evaluate confidence score and risk signals. Escalate to human review if
+      confidence < humanReviewThreshold, budget is critically low, or unresolved
+      feedback exists.
+    humanReviewThreshold: 0.7
+  - id: HumanReviewNode
+    type: MiddlewareNode
+    prompt: >
+      Human-in-the-loop review gate. In production this pauses the graph and
+      awaits human feedback via LangGraph interrupt().
+
+edges:
+  - [START, PIIValidatorBefore]
+  - [PIIValidatorBefore, PreferenceAnalyzer]
+  - [PreferenceAnalyzer, ItineraryPlanner]
+  - [PreferenceAnalyzer, HotelFinder]
+  - [PreferenceAnalyzer, FoodRecommender]
+  - [ItineraryPlanner, ResultMerger]
+  - [HotelFinder, ResultMerger]
+  - [FoodRecommender, ResultMerger]
+  - [ResultMerger, PostgresCheckpointer]
+  - [PostgresCheckpointer, ToolCallValidatorAfter]
+  - [ToolCallValidatorAfter, ToolRetryManager]
+  - [ToolRetryManager, TodoListManager]
+  - [TodoListManager, HumanInterruptManager]
+  - [HumanReviewNode, END]
+
+conditionalEdges:
+  - startNode: HumanInterruptManager
+    route:
+      humanReview: HumanReviewNode
+      done: END

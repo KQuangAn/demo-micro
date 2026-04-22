@@ -1,0 +1,77 @@
+description: |
+  Critic Loop Trip Planning Workflow.
+  Planner generates a trip plan; Critic reviews it and suggests improvements.
+  The loop continues until the plan meets quality criteria or the iteration
+  limit is reached. On exhaustion the Critic escalates to human-in-the-loop
+  review rather than silently accepting a poor plan.
+
+nodes:
+  - id: PIIValidatorBefore
+    type: MiddlewareNode
+    prompt: Validate and scrub PII from raw user input
+  - id: PreferenceAnalyzer
+    type: AgentNode
+    prompt: >
+      Extract structured user preferences: budget, trip length, travel style,
+      dietary restrictions, interests, and destinations. Compute a confidence
+      score (0–1) based on input completeness.
+  - id: Planner
+    type: AgentNode
+    prompt: >
+      Generate a complete trip plan (itinerary, hotels, food) using user
+      preferences. On subsequent iterations, refine the plan using Critic
+      feedback to address gaps or weaknesses.
+  - id: Critic
+    type: AgentNode
+    prompt: >
+      Review the current plan against quality criteria: itinerary completeness,
+      hotel availability, food diversity. Return structured feedback and an
+      acceptance decision. After MAX_ITERATIONS failed attempts, escalate to
+      human review instead of force-accepting.
+  - id: PostgresCheckpointer
+    type: MiddlewareNode
+    prompt: Persist current agent state to Postgres so the workflow can resume after interrupts
+  - id: ToolCallValidatorAfter
+    type: MiddlewareNode
+    prompt: Validate that all plan outputs are complete and coherent after the critic loop
+  - id: ToolRetryManager
+    type: MiddlewareNode
+    prompt: Schedule retries for any failed or incomplete tool calls
+  - id: TodoListManager
+    type: MiddlewareNode
+    prompt: Track pending planning steps and surface them for downstream nodes
+  - id: HumanInterruptManager
+    type: MiddlewareNode
+    prompt: >
+      Evaluate confidence score and risk signals. Escalate to human review if
+      confidence < humanReviewThreshold, budget is critically low, or unresolved
+      feedback exists.
+    humanReviewThreshold: 0.7
+  - id: HumanReviewNode
+    type: MiddlewareNode
+    prompt: >
+      Human-in-the-loop review gate. Receives either a Critic escalation or a
+      low-confidence signal. In production this pauses the graph and awaits
+      human feedback via LangGraph interrupt().
+
+edges:
+  - [START, PIIValidatorBefore]
+  - [PIIValidatorBefore, PreferenceAnalyzer]
+  - [PreferenceAnalyzer, Planner]
+  - [Planner, Critic]
+  - [PostgresCheckpointer, ToolCallValidatorAfter]
+  - [ToolCallValidatorAfter, ToolRetryManager]
+  - [ToolRetryManager, TodoListManager]
+  - [TodoListManager, HumanInterruptManager]
+  - [HumanReviewNode, END]
+
+conditionalEdges:
+  - startNode: Critic
+    route:
+      improvementNeeded: Planner
+      planAccepted: PostgresCheckpointer
+      escalated: HumanReviewNode
+  - startNode: HumanInterruptManager
+    route:
+      humanReview: HumanReviewNode
+      done: END

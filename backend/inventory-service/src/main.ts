@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { TimeoutInterceptor } from './interceptors/timeout.interceptor';
+import { CacheControlInterceptor } from './interceptors/cache-control.interceptor';
 import { CustomLoggerService } from './common/logger';
 
 async function bootstrap() {
@@ -8,6 +9,7 @@ async function bootstrap() {
   if (process.env.ENABLE_TIMEOUT_LOGGER === 'true') {
     app.useGlobalInterceptors(new TimeoutInterceptor());
   }
+  app.useGlobalInterceptors(new CacheControlInterceptor('no-store'));
   await app.listen(process.env.PORT ?? 9000);
   const logger = new CustomLoggerService();
   app.useLogger(logger);
